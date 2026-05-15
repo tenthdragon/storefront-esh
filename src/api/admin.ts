@@ -1,7 +1,5 @@
 import { adminStorefrontFetch, parseResponse } from './client'
-import type { AdminSession, Item, ItemVisibilitySettings } from '@/types'
-
-const STORE_ID = import.meta.env.VITE_SCALEV_STORE_UNIQUE_ID as string
+import type { AdminSession, Item, StorefrontSettings } from '@/types'
 
 async function adminApiFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers as HeadersInit)
@@ -34,9 +32,9 @@ export async function logoutAdmin() {
   return parseResponse<{ authenticated: boolean }>(res)
 }
 
-export async function getVisibilitySettings() {
+export async function getStorefrontSettings() {
   const res = await adminApiFetch('/settings')
-  return parseResponse<ItemVisibilitySettings>(res)
+  return parseResponse<StorefrontSettings>(res)
 }
 
 export async function setItemVisibility(
@@ -48,7 +46,25 @@ export async function setItemVisibility(
     method: 'PUT',
     body: JSON.stringify({ entityType, id, visible }),
   })
-  return parseResponse<ItemVisibilitySettings>(res)
+  return parseResponse<StorefrontSettings>(res)
+}
+
+export async function updateStorefrontPresentation(payload: {
+  branding?: {
+    storeName?: string
+  }
+  sections?: {
+    catalog?: {
+      visible?: boolean
+      title?: string
+    }
+  }
+}) {
+  const res = await adminApiFetch('/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+  return parseResponse<StorefrontSettings>(res)
 }
 
 export async function getAdminItems(params: {

@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { useCartStore } from '@/stores/cart'
+import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
 import { onMounted } from 'vue'
 
 const cart = useCartStore()
+const storefrontSettings = useStorefrontSettingsStore()
+
 onMounted(() => cart.fetchCart())
 </script>
 
 <template>
   <nav class="navbar">
-    <RouterLink to="/" class="brand">Toko</RouterLink>
+    <RouterLink to="/" class="brand">{{ storefrontSettings.storeName }}</RouterLink>
     <div class="nav-links">
       <RouterLink to="/">Produk</RouterLink>
       <RouterLink to="/cart" class="cart-link">

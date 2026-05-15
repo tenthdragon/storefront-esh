@@ -11,10 +11,30 @@ export interface VisibilityRule {
   updatedAt: string
 }
 
+export interface StorefrontBranding {
+  storeName: string
+}
+
+export interface StorefrontCatalogSection {
+  visible: boolean
+  title: string
+}
+
+export interface StorefrontSections {
+  catalog: StorefrontCatalogSection
+}
+
 export interface StorefrontSettings {
   version: 1
   updatedAt: string
   items: Record<string, VisibilityRule>
+  branding: StorefrontBranding
+  sections: StorefrontSections
+}
+
+export interface StorefrontPublicSettings {
+  branding: StorefrontBranding
+  sections: StorefrontSections
 }
 
 export interface CatalogItem {

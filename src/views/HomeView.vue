@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { getItems, getItemCount } from '@/api/catalog'
 import ProductCard from '@/components/ProductCard.vue'
+import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
 import type { Item } from '@/types'
 
 const items = ref<Item[]>([])
@@ -12,6 +13,7 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const PER_PAGE = 20
 let searchTimer: ReturnType<typeof setTimeout>
+const storefrontSettings = useStorefrontSettingsStore()
 
 async function load() {
   loading.value = true
@@ -45,8 +47,13 @@ const totalPages = computed(() => Math.ceil(count.value / PER_PAGE))
 
 <template>
   <div>
-    <div class="header">
-      <h1>Katalog Produk</h1>
+    <div
+      class="header"
+      :class="{ 'header-search-only': !storefrontSettings.catalogHeadingVisible }"
+    >
+      <h1 v-if="storefrontSettings.catalogHeadingVisible">
+        {{ storefrontSettings.catalogHeadingTitle }}
+      </h1>
       <input
         v-model="search"
         type="search"
@@ -83,6 +90,10 @@ const totalPages = computed(() => Math.ceil(count.value / PER_PAGE))
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.header-search-only {
+  justify-content: flex-end;
 }
 
 h1 {

@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import NavBar from '@/components/NavBar.vue'
+import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
+import { onMounted } from 'vue'
+
+const storefrontSettings = useStorefrontSettingsStore()
+
+onMounted(() => {
+  void storefrontSettings.fetchSettings()
+})
 </script>
 
 <template>

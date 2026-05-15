@@ -3,19 +3,29 @@ import { computed, onMounted, ref, watch } from 'vue'
 import {
   getAdminItemCount,
   getAdminItems,
+  getStorefrontSettings,
   getAdminSession,
-  getVisibilitySettings,
   loginAdmin,
   logoutAdmin,
   setItemVisibility,
+  updateStorefrontPresentation,
 } from '@/api/admin'
-import type { Item, ItemVisibilitySettings } from '@/types'
+import type { Item, StorefrontSettings } from '@/types'
 
 const items = ref<Item[]>([])
-const settings = ref<ItemVisibilitySettings>({
+const settings = ref<StorefrontSettings>({
   version: 1,
   updatedAt: new Date(0).toISOString(),
   items: {},
+  branding: {
+    storeName: '',
+  },
+  sections: {
+    catalog: {
+      visible: true,
+      title: 'Katalog Produk',
+    },
+  },
 })
 const page = ref(1)
 const search = ref('')
@@ -29,6 +39,12 @@ const error = ref<string | null>(null)
 const authError = ref<string | null>(null)
 const password = ref('')
 const savingKey = ref<string | null>(null)
+const savingPresentation = ref(false)
+const presentationError = ref<string | null>(null)
+const presentationSaved = ref<string | null>(null)
+const storeNameInput = ref('')
+const showCatalogHeading = ref(true)
+const catalogHeadingInput = ref('Katalog Produk')
 const PER_PAGE = 20
 let searchTimer: ReturnType<typeof setTimeout>
 
@@ -50,6 +66,12 @@ function formatPrice(price: string) {
 
 function typeLabel(entityType: Item['entity_type']) {
   return entityType === 'product' ? 'Produk' : 'Bundle'
+}
+
+function syncPresentationForm() {
+  storeNameInput.value = settings.value.branding.storeName
+  showCatalogHeading.value = settings.value.sections.catalog.visible
+  catalogHeadingInput.value = settings.value.sections.catalog.title
 }
 
 async function loadSession() {
@@ -75,12 +97,13 @@ async function loadCatalog() {
     const [itemsData, countData, settingsData] = await Promise.all([
       getAdminItems({ page: page.value, per_page: PER_PAGE, search: search.value || undefined }),
       getAdminItemCount(search.value || undefined),
-      getVisibilitySettings(),
+      getStorefrontSettings(),
     ])
 
     items.value = itemsData.data
     count.value = countData.total
     settings.value = settingsData
+    syncPresentationForm()
   } catch (e) {
     error.value = (e as Error).message
   } finally {
@@ -111,6 +134,8 @@ async function handleLogout() {
   authenticated.value = false
   items.value = []
   count.value = 0
+  presentationSaved.value = null
+  presentationError.value = null
 }
 
 async function updateVisibility(item: Item, visible: boolean) {
@@ -143,6 +168,32 @@ async function updateVisibility(item: Item, visible: boolean) {
   }
 }
 
+async function savePresentation() {
+  savingPresentation.value = true
+  presentationError.value = null
+  presentationSaved.value = null
+
+  try {
+    settings.value = await updateStorefrontPresentation({
+      branding: {
+        storeName: storeNameInput.value,
+      },
+      sections: {
+        catalog: {
+          visible: showCatalogHeading.value,
+          title: catalogHeadingInput.value,
+        },
+      },
+    })
+    syncPresentationForm()
+    presentationSaved.value = 'Label storefront berhasil disimpan.'
+  } catch (e) {
+    presentationError.value = (e as Error).message
+  } finally {
+    savingPresentation.value = false
+  }
+}
+
 const totalPages = computed(() => Math.max(1, Math.ceil(count.value / PER_PAGE)))
 const visibleCountOnPage = computed(() => items.value.filter((item) => isVisible(item)).length)
 
@@ -163,6 +214,10 @@ watch(search, () => {
     page.value = 1
     void loadCatalog()
   }, 300)
+})
+
+watch([storeNameInput, showCatalogHeading, catalogHeadingInput], () => {
+  presentationSaved.value = null
 })
 </script>
 
@@ -216,6 +271,63 @@ watch(search, () => {
     </div>
 
     <template v-else>
+      <form class="panel settings-panel" @submit.prevent="savePresentation">
+        <div class="settings-copy">
+          <p class="eyebrow">Branding & Labels</p>
+          <h2>Teks storefront publik</h2>
+          <p class="subcopy">
+            Atur nama toko di navbar dan tentukan apakah judul section katalog ditampilkan atau disembunyikan.
+          </p>
+        </div>
+
+        <div class="settings-grid">
+          <label class="field">
+            <span>Nama toko</span>
+            <input
+              v-model="storeNameInput"
+              type="text"
+              placeholder="Misalnya: Army Alghifari"
+            />
+          </label>
+
+          <label class="field checkbox-field">
+            <span>Tampilkan judul katalog</span>
+            <input v-model="showCatalogHeading" type="checkbox" />
+          </label>
+
+          <label class="field">
+            <span>Judul katalog</span>
+            <input
+              v-model="catalogHeadingInput"
+              type="text"
+              :disabled="!showCatalogHeading"
+              placeholder="Misalnya: Katalog Produk"
+            />
+          </label>
+
+          <div class="preview-card">
+            <p class="stat-label">Preview singkat</p>
+            <strong>{{ storeNameInput.trim() || 'Toko' }}</strong>
+            <span>
+              {{
+                showCatalogHeading
+                  ? catalogHeadingInput.trim() || 'Katalog Produk'
+                  : 'Judul katalog disembunyikan'
+              }}
+            </span>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <p v-if="presentationError" class="error-text">{{ presentationError }}</p>
+          <p v-else-if="presentationSaved" class="success-text">{{ presentationSaved }}</p>
+
+          <button class="primary-btn" :disabled="savingPresentation">
+            {{ savingPresentation ? 'Menyimpan...' : 'Simpan Label' }}
+          </button>
+        </div>
+      </form>
+
       <div class="panel controls">
         <div>
           <p class="stat-label">Item pada halaman ini</p>
@@ -394,6 +506,55 @@ h1 {
   color: #b91c1c;
 }
 
+.success-text {
+  color: #15803d;
+}
+
+.settings-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: start;
+}
+
+.checkbox-field {
+  align-content: start;
+}
+
+.checkbox-field input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.preview-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.preview-card strong {
+  font-size: 1.1rem;
+}
+
+.preview-card span {
+  color: #475569;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
 .controls {
   display: flex;
   justify-content: space-between;
@@ -519,7 +680,8 @@ h2 {
 @media (max-width: 760px) {
   .page-header,
   .controls,
-  .item-row {
+  .item-row,
+  .settings-actions {
     flex-direction: column;
     align-items: stretch;
   }

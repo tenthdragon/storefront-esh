@@ -1,4 +1,13 @@
-import type { StoreItemType, StorefrontEnv, StorefrontSettings, VisibilityRule } from './types'
+import type {
+  StoreItemType,
+  StorefrontBranding,
+  StorefrontCatalogSection,
+  StorefrontEnv,
+  StorefrontPublicSettings,
+  StorefrontSections,
+  StorefrontSettings,
+  VisibilityRule,
+} from './types'
 
 const SETTINGS_KEY = 'catalog-visibility:v1'
 
@@ -7,6 +16,15 @@ function createDefaultSettings(): StorefrontSettings {
     version: 1,
     updatedAt: new Date(0).toISOString(),
     items: {},
+    branding: {
+      storeName: '',
+    },
+    sections: {
+      catalog: {
+        visible: true,
+        title: 'Katalog Produk',
+      },
+    },
   }
 }
 
@@ -22,6 +40,7 @@ function normalizeSettings(value: unknown): StorefrontSettings {
   }
 
   const candidate = value as Partial<StorefrontSettings>
+  const defaults = createDefaultSettings()
   const items: Record<string, VisibilityRule> = {}
 
   if (candidate.items && typeof candidate.items === 'object') {
@@ -32,11 +51,54 @@ function normalizeSettings(value: unknown): StorefrontSettings {
     }
   }
 
+  const branding = normalizeBranding(candidate.branding, defaults.branding)
+  const sections = normalizeSections(candidate.sections, defaults.sections)
+
   return {
     version: 1,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString(),
     items,
+    branding,
+    sections,
   }
+}
+
+function normalizeBranding(value: unknown, defaults: StorefrontBranding): StorefrontBranding {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontBranding>
+  return {
+    storeName: typeof candidate.storeName === 'string' ? candidate.storeName : defaults.storeName,
+  }
+}
+
+function normalizeCatalogSection(value: unknown, defaults: StorefrontCatalogSection): StorefrontCatalogSection {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontCatalogSection>
+  return {
+    visible: typeof candidate.visible === 'boolean' ? candidate.visible : defaults.visible,
+    title: typeof candidate.title === 'string' ? candidate.title : defaults.title,
+  }
+}
+
+function normalizeSections(value: unknown, defaults: StorefrontSections): StorefrontSections {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontSections>
+  return {
+    catalog: normalizeCatalogSection(candidate.catalog, defaults.catalog),
+  }
+}
+
+function sanitizeLabel(value: string) {
+  return value.trim()
 }
 
 export function getItemKey(entityType: StoreItemType, id: number) {
@@ -68,6 +130,13 @@ export async function saveSettings(env: StorefrontEnv, settings: StorefrontSetti
   await env.STOREFRONT_SETTINGS.put(SETTINGS_KEY, JSON.stringify(settings))
 }
 
+export function toPublicSettings(settings: StorefrontSettings): StorefrontPublicSettings {
+  return {
+    branding: settings.branding,
+    sections: settings.sections,
+  }
+}
+
 export function isVisible(settings: StorefrontSettings, entityType: StoreItemType, id: number) {
   return settings.items[getItemKey(entityType, id)]?.visible !== false
 }
@@ -97,6 +166,45 @@ export async function setVisibility(
       visible: false,
       updatedAt: new Date().toISOString(),
     }
+  }
+
+  await saveSettings(env, nextSettings)
+  return nextSettings
+}
+
+export async function setPresentation(
+  env: StorefrontEnv,
+  values: {
+    storeName?: string
+    catalogVisible?: boolean
+    catalogTitle?: string
+  },
+) {
+  const settings = await loadSettings(env)
+  const nextSettings: StorefrontSettings = {
+    ...settings,
+    updatedAt: new Date().toISOString(),
+    branding: {
+      ...settings.branding,
+    },
+    sections: {
+      ...settings.sections,
+      catalog: {
+        ...settings.sections.catalog,
+      },
+    },
+  }
+
+  if (typeof values.storeName === 'string') {
+    nextSettings.branding.storeName = sanitizeLabel(values.storeName)
+  }
+
+  if (typeof values.catalogVisible === 'boolean') {
+    nextSettings.sections.catalog.visible = values.catalogVisible
+  }
+
+  if (typeof values.catalogTitle === 'string') {
+    nextSettings.sections.catalog.title = sanitizeLabel(values.catalogTitle)
   }
 
   await saveSettings(env, nextSettings)
