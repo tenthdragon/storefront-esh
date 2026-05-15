@@ -1,4 +1,4 @@
-const API_BASE = '/scalev-api'
+const API_BASE = import.meta.env.DEV ? '/scalev-api' : 'https://api.scalev.com'
 const STORE_ID = import.meta.env.VITE_SCALEV_STORE_UNIQUE_ID as string
 const STOREFRONT_KEY = import.meta.env.VITE_SCALEV_STOREFRONT_API_KEY as string
 
