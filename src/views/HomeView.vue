@@ -19,7 +19,7 @@ async function load() {
   try {
     const [data, countData] = await Promise.all([
       getItems({ page: page.value, per_page: PER_PAGE, search: search.value || undefined }),
-      getItemCount(),
+      getItemCount(search.value || undefined),
     ])
     items.value = data.data
     count.value = countData.total
@@ -61,7 +61,7 @@ const totalPages = computed(() => Math.ceil(count.value / PER_PAGE))
       <strong>Error:</strong> {{ error }}
     </div>
 
-    <div v-else-if="!items.length" class="empty">Tidak ada produk ditemukan.</div>
+    <div v-else-if="!items.length" class="empty">Belum ada item yang sedang ditayangkan.</div>
 
     <div v-else class="grid">
       <ProductCard v-for="item in items" :key="item.slug" :item="item" />

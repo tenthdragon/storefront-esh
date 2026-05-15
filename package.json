@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "node ./scripts/github-only-deploy.mjs",
+    "deploy:production": "node ./scripts/github-only-deploy.mjs"
   },
   "dependencies": {
     "pinia": "^2.1.7",

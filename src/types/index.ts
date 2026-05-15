@@ -9,6 +9,22 @@ export interface Item {
   in_stock: boolean
 }
 
+export interface VisibilityRule {
+  visible: false
+  updatedAt: string
+}
+
+export interface ItemVisibilitySettings {
+  version: 1
+  updatedAt: string
+  items: Record<string, VisibilityRule>
+}
+
+export interface AdminSession {
+  authenticated: boolean
+  configured: boolean
+}
+
 export interface ProductVariant {
   id: number
   name: string

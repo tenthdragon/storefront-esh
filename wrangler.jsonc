@@ -1,0 +1,11 @@
+{
+  "name": "storefront-esh",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-05-15",
+  "kv_namespaces": [
+    {
+      "binding": "STOREFRONT_SETTINGS",
+      "id": "3e8633183d3f4143b568919f6bb4efa2"
+    }
+  ]
+}

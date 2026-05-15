@@ -1,8 +1,11 @@
 import { storefrontFetch, parseResponse } from './client'
 import type { Item, Product, Bundle, ProductVariant } from '@/types'
 
-export async function getItemCount() {
-  const res = await storefrontFetch('/public/items/count')
+export async function getItemCount(search?: string) {
+  const query = new URLSearchParams()
+  if (search) query.set('search', search)
+  const suffix = query.toString() ? `?${query}` : ''
+  const res = await storefrontFetch(`/public/items/count${suffix}`)
   return parseResponse<{ total: number }>(res)
 }
 

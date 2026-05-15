@@ -10,7 +10,7 @@ function saveGuestToken(token: string) {
   localStorage.setItem('scalev_guest_token', token)
 }
 
-export async function storefrontFetch(path: string, init: RequestInit = {}): Promise<Response> {
+function createStorefrontHeaders(init: RequestInit = {}) {
   const headers = new Headers(init.headers as HeadersInit)
   headers.set('Accept', 'application/json')
   headers.set('X-Scalev-Storefront-Api-Key', STOREFRONT_KEY)
@@ -18,9 +18,18 @@ export async function storefrontFetch(path: string, init: RequestInit = {}): Pro
   if (guestToken) {
     headers.set('X-Scalev-Guest-Token', guestToken)
   }
+  return headers
+}
+
+async function requestStorefront(
+  path: string,
+  init: RequestInit = {},
+  credentials: RequestCredentials,
+): Promise<Response> {
+  const headers = createStorefrontHeaders(init)
   const response = await fetch(`${API_BASE}/v3/stores/${STORE_ID}${path}`, {
     ...init,
-    credentials: 'omit',
+    credentials,
     headers,
   })
   const newToken = response.headers.get('x-scalev-guest-token')
@@ -28,6 +37,14 @@ export async function storefrontFetch(path: string, init: RequestInit = {}): Pro
     saveGuestToken(newToken)
   }
   return response
+}
+
+export async function storefrontFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return requestStorefront(path, init, 'omit')
+}
+
+export async function adminStorefrontFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return requestStorefront(path, init, 'same-origin')
 }
 
 export async function customerFetch(
