@@ -43,10 +43,17 @@ function getAccountHolder(account: PaymentAccount) {
   return account.account_holder || account.account_name || ''
 }
 
+function normalizePaymentMethod(value?: string) {
+  return (value ?? '').trim().toLowerCase()
+}
+
 const paymentAccounts = computed(() => props.order.store?.payment_accounts ?? [])
 const productTotal = computed(() => toNumber(props.order.product_price) - toNumber(props.order.product_discount))
 const shippingTotal = computed(() => toNumber(props.order.shipping_cost) - toNumber(props.order.shipping_discount))
 const uniqueCodeDiscount = computed(() => Math.max(0, toNumber(props.order.unique_code_discount)))
+const shouldShowPayButton = computed(() =>
+  Boolean(props.order.payment_url) && normalizePaymentMethod(props.order.payment_method) !== 'bank_transfer',
+)
 const whatsappNumber = computed(() =>
   normalizeWhatsappNumber(storefrontSettings.settings.checkout.whatsappNumber || ''),
 )
@@ -90,7 +97,7 @@ const showConfirmationSection = computed(() =>
       <span>{{ formatPrice(order.gross_revenue) }}</span>
     </div>
 
-    <div v-if="order.payment_url" class="pay-url">
+    <div v-if="shouldShowPayButton" class="pay-url">
       <a :href="order.payment_url" target="_blank" rel="noreferrer noopener" class="btn-pay">Bayar Sekarang</a>
     </div>
 
