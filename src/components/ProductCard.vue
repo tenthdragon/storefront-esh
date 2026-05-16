@@ -43,11 +43,11 @@ function cardTone(item: Item) {
           <strong>{{ item.name }}</strong>
         </div>
       </div>
-      <span class="price-tag">{{ formatPrice(item.price_range.min) }}</span>
     </div>
 
     <div class="card-meta">
       <p class="card-title">{{ item.name }}</p>
+      <span class="price-tag">{{ formatPrice(item.price_range.min) }}</span>
       <div class="card-row">
         <span class="card-badge">{{ itemBadge(item) }}</span>
         <span class="card-stock">{{ item.in_stock ? 'Tersedia' : 'Stok Habis' }}</span>
@@ -144,21 +144,6 @@ function cardTone(item: Item) {
 .tone-8 { background: linear-gradient(135deg, #c9b896 0%, #a89572 100%); }
 .tone-8 .fallback-copy { color: var(--sf-ink); }
 
-.price-tag {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  background: var(--sf-price-bg);
-  color: var(--sf-price-ink);
-  padding: 7px 12px;
-  font-family: var(--sf-mono);
-  font-size: 11px;
-  letter-spacing: -0.01em;
-}
-
 .card-meta {
   padding: 0 4px;
 }
@@ -174,6 +159,19 @@ function cardTone(item: Item) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.price-tag {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: var(--sf-price-bg);
+  color: var(--sf-price-ink);
+  padding: 7px 12px;
+  font-family: var(--sf-mono);
+  font-size: 11px;
+  letter-spacing: -0.01em;
 }
 
 .card-row {
