@@ -523,6 +523,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   const storefrontSettings = useStorefrontSettingsStore()
   const bootstrapped = ref(false)
   const bootstrappedPixelId = ref<string | null>(getBrowserWindow()?.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ ?? null)
+  const lastTrackedPageViewSignature = ref<string | null>(null)
 
   const metaSettings = computed(() => storefrontSettings.settings.analytics.meta)
   const metaReady = computed(() =>
@@ -531,6 +532,20 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   const activeMetaPixelId = computed(() =>
     metaReady.value ? metaSettings.value.pixelId.trim() : '',
   )
+
+  function trackRoutePageView(routeKey: string, pixelId: string, force = false) {
+    if (!pixelId) return false
+
+    const signature = `${pixelId}::${routeKey}`
+    if (!force && lastTrackedPageViewSignature.value === signature) {
+      return false
+    }
+
+    ensureMetaPixel(pixelId)
+    trackMetaPageView(pixelId)
+    lastTrackedPageViewSignature.value = signature
+    return true
+  }
 
   async function sendMetaEvent(input: {
     eventId: string
@@ -593,16 +608,22 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
       ensureMetaPixel(pixelId)
       if (bootstrappedPixelId.value !== pixelId) {
-        trackMetaPageView(pixelId)
         bootstrappedPixelId.value = pixelId
+        lastTrackedPageViewSignature.value = null
       }
     }, { immediate: true })
 
-    router.afterEach(() => {
+    void router.isReady().then(() => {
       syncMetaAttribution()
       if (activeMetaPixelId.value) {
-        ensureMetaPixel(activeMetaPixelId.value)
-        trackMetaPageView(activeMetaPixelId.value)
+        trackRoutePageView(router.currentRoute.value.fullPath, activeMetaPixelId.value)
+      }
+    })
+
+    router.afterEach((to) => {
+      syncMetaAttribution()
+      if (activeMetaPixelId.value) {
+        trackRoutePageView(to.fullPath, activeMetaPixelId.value)
       }
     })
   }
