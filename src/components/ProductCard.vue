@@ -3,7 +3,10 @@ import { computed } from 'vue'
 import type { Item } from '@/types'
 
 const props = defineProps<{ item: Item }>()
-const summary = computed(() => summarizeDescription(props.item.description))
+const hasPriceRange = computed(() => {
+  const { min, max } = props.item.price_range
+  return parseFloat(max) > parseFloat(min)
+})
 
 function formatPrice(price: string) {
   return new Intl.NumberFormat('id-ID', {
@@ -30,10 +33,6 @@ function cardTone(item: Item) {
   ]
   return palettes[item.id % palettes.length]
 }
-
-function summarizeDescription(description?: string) {
-  return description?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() ?? ''
-}
 </script>
 
 <template>
@@ -49,48 +48,49 @@ function summarizeDescription(description?: string) {
           <strong>{{ item.name }}</strong>
         </div>
       </div>
+      <span v-if="!item.in_stock" class="stock-overlay">Stok Habis</span>
     </div>
 
     <div class="card-meta">
       <p class="card-title">{{ item.name }}</p>
-      <p v-if="summary" class="card-summary">{{ summary }}</p>
-      <div class="card-row">
-        <span class="price-text">{{ formatPrice(item.price_range.min) }}</span>
-        <span class="card-stock">{{ item.in_stock ? 'Tersedia' : 'Stok Habis' }}</span>
-      </div>
+    </div>
+
+    <div class="card-footer">
+      <span class="price-tag">
+        {{ formatPrice(item.price_range.min) }}<template v-if="hasPriceRange">+</template>
+      </span>
     </div>
   </RouterLink>
 </template>
 
 <style scoped>
 .card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 10px;
+  overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease;
   animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
+  border-color: var(--sf-ink);
+  box-shadow: 0 12px 28px -16px rgba(31, 27, 22, 0.2);
 }
 
 .card-media {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 18px;
-  overflow: hidden;
   background: var(--sf-accent-soft);
-  margin-bottom: 16px;
-}
-
-.card-media::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  border: 1px solid rgba(31, 27, 22, 0.06);
-  pointer-events: none;
+  overflow: hidden;
+  border-bottom: 1px solid var(--sf-line-strong);
 }
 
 .media-image,
@@ -107,6 +107,7 @@ function summarizeDescription(description?: string) {
 
 .media-image {
   object-fit: cover;
+  display: block;
 }
 
 .fallback-art {
@@ -124,7 +125,7 @@ function summarizeDescription(description?: string) {
 }
 
 .fallback-copy strong {
-  font-size: clamp(24px, 3vw, 38px);
+  font-size: clamp(20px, 2.6vw, 32px);
   line-height: 0.95;
   letter-spacing: -0.045em;
 }
@@ -150,65 +151,57 @@ function summarizeDescription(description?: string) {
 .tone-8 { background: linear-gradient(135deg, #c9b896 0%, #a89572 100%); }
 .tone-8 .fallback-copy { color: var(--sf-ink); }
 
+.stock-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(31, 27, 22, 0.86);
+  color: #faf7f2;
+  font-family: var(--sf-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
 .card-meta {
-  padding: 0 4px;
-  display: grid;
-  gap: 10px;
+  padding: 16px 16px 18px;
+  flex: 1;
+  min-width: 0;
 }
 
 .card-title {
-  font-size: 16px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.32;
-  letter-spacing: -0.02em;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
   color: var(--sf-ink);
-  margin: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: break-word;
 }
 
-.card-summary {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--sf-ink-soft);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.card-footer {
+  border-top: 1px solid var(--sf-line-strong);
+  padding: 12px 16px;
+  background: var(--sf-bg-card);
 }
 
-.card-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.price-text,
-.card-stock {
+.price-tag {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  background: var(--sf-accent);
+  color: var(--sf-accent-contrast);
+  padding: 6px 16px 6px 10px;
   font-family: var(--sf-mono);
-}
-
-.price-text {
-  color: var(--sf-price-bg);
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  text-transform: none;
-  font-weight: 500;
-}
-
-.card-stock {
-  color: var(--sf-ink-muted);
-  background: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%);
 }
 
 @keyframes rise {
