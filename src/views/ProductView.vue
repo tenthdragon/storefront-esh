@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProduct, getBundle } from '@/api/catalog'
 import { useCartStore } from '@/stores/cart'
@@ -19,6 +19,26 @@ const quantity = ref(1)
 const loading = ref(false)
 const addingToCart = ref(false)
 const error = ref<string | null>(null)
+
+const productCardEl = ref<HTMLElement | null>(null)
+const isCardVisible = ref(true)
+let cardObserver: IntersectionObserver | null = null
+
+watch(productCardEl, (el) => {
+  cardObserver?.disconnect()
+  if (!el) return
+  cardObserver = new IntersectionObserver(([entry]) => {
+    isCardVisible.value = entry.isIntersecting
+  }, { threshold: 0 })
+  cardObserver.observe(el)
+})
+
+onBeforeUnmount(() => cardObserver?.disconnect())
+
+const canBuy = computed(() => {
+  if (isBundle.value) return !!bundle.value
+  return !!product.value?.variants.length
+})
 
 onMounted(async () => {
   loading.value = true
@@ -97,16 +117,17 @@ async function addToCart() {
     <div v-else-if="error" class="state-error">{{ error }}</div>
 
     <div v-else class="detail">
-      <div class="media-panel">
-        <img v-if="currentImage" :src="currentImage" :alt="currentName" class="main-image" />
-        <div v-else class="fallback-image">
-          <span>{{ currentName }}</span>
-        </div>
-      </div>
+      <h1 class="product-title">{{ currentName }}</h1>
 
-      <div class="content-panel">
+      <aside ref="productCardEl" class="product-card">
         <span class="eyebrow">{{ isBundle ? 'Bundle' : 'Produk Digital' }}</span>
-        <h1>{{ currentName }}</h1>
+
+        <div class="card-media">
+          <img v-if="currentImage" :src="currentImage" :alt="currentName" class="main-image" />
+          <div v-else class="fallback-image">
+            <span>{{ currentName }}</span>
+          </div>
+        </div>
 
         <div class="price-wrap">
           <span v-if="originalPrice && originalPrice > currentPrice" class="original">
@@ -150,12 +171,33 @@ async function addToCart() {
         >
           {{ addingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang' }}
         </button>
+      </aside>
 
-        <div v-if="currentDescription" class="description">
-          <p class="section-label">Deskripsi</p>
-          <div v-html="currentDescription" />
-        </div>
+      <div v-if="currentDescription" class="description">
+        <p class="section-label">Deskripsi</p>
+        <div v-html="currentDescription" />
       </div>
+    </div>
+
+    <div
+      v-if="!loading && !error && canBuy"
+      class="mobile-cta-bar"
+      :class="{ visible: !isCardVisible }"
+      :aria-hidden="isCardVisible"
+    >
+      <div class="mobile-cta-price">
+        <span v-if="originalPrice && originalPrice > currentPrice" class="original">
+          {{ formatPrice(originalPrice) }}
+        </span>
+        <span class="price">{{ formatPrice(currentPrice) }}</span>
+      </div>
+      <button
+        class="btn-cart mobile-cta-btn"
+        :disabled="addingToCart"
+        @click="addToCart"
+      >
+        {{ addingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang' }}
+      </button>
     </div>
   </section>
 </template>
@@ -191,33 +233,51 @@ async function addToCart() {
 
 .detail {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-  gap: 36px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-areas:
+    'title card'
+    'desc  card';
+  column-gap: 48px;
+  row-gap: 32px;
   align-items: start;
 }
 
-.media-panel,
-.content-panel {
+.product-title {
+  grid-area: title;
+  font-size: clamp(32px, 3.4vw, 48px);
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+  font-weight: 500;
+}
+
+.product-card {
+  grid-area: card;
+  position: sticky;
+  top: 24px;
   background: var(--sf-bg-card);
   border: 1px solid var(--sf-line);
   border-radius: 26px;
-  overflow: hidden;
+  padding: 20px;
+  display: grid;
+  gap: 18px;
 }
 
-.media-panel {
-  padding: 20px;
+.card-media {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--sf-accent-soft);
 }
 
 .main-image,
 .fallback-image {
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 20px;
+  height: 100%;
 }
 
 .main-image {
   object-fit: cover;
-  background: var(--sf-accent-soft);
 }
 
 .fallback-image {
@@ -227,15 +287,9 @@ async function addToCart() {
   color: var(--sf-ink);
   padding: 24px;
   text-align: center;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 500;
   letter-spacing: -0.04em;
-}
-
-.content-panel {
-  padding: 28px;
-  display: grid;
-  gap: 20px;
 }
 
 .eyebrow {
@@ -247,13 +301,6 @@ async function addToCart() {
   text-transform: uppercase;
   color: var(--sf-accent-strong);
   font-family: var(--sf-mono);
-}
-
-h1 {
-  font-size: clamp(28px, 3vw, 42px);
-  line-height: 1.03;
-  letter-spacing: -0.045em;
-  font-weight: 500;
 }
 
 .price-wrap {
@@ -374,19 +421,90 @@ h1 {
 }
 
 .description {
-  padding-top: 22px;
-  border-top: 1px solid var(--sf-line);
+  grid-area: desc;
+  display: grid;
+  gap: 14px;
   color: var(--sf-ink-soft);
-  line-height: 1.75;
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 62ch;
 }
 
-.description :deep(p) + :deep(p) {
+.description :deep(> div > * + *) {
   margin-top: 0.9rem;
+}
+
+.description :deep(ul),
+.description :deep(ol) {
+  padding-left: 1.2em;
+}
+
+.description :deep(li) + :deep(li) {
+  margin-top: 0.3rem;
+}
+
+.mobile-cta-bar {
+  display: none;
 }
 
 @media (max-width: 900px) {
   .detail {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      'title'
+      'card'
+      'desc';
+    column-gap: 0;
+  }
+
+  .product-card {
+    position: static;
+  }
+
+  .product-view {
+    padding-bottom: 96px;
+  }
+
+  .mobile-cta-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: var(--sf-bg-card);
+    border-top: 1px solid var(--sf-line);
+    box-shadow: 0 -10px 28px -16px rgba(31, 27, 22, 0.22);
+    transform: translateY(110%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 50;
+  }
+
+  .mobile-cta-bar.visible {
+    transform: translateY(0);
+  }
+
+  .mobile-cta-price {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .mobile-cta-price .original {
+    font-size: 12px;
+  }
+
+  .mobile-cta-price .price {
+    font-size: 20px;
+  }
+
+  .mobile-cta-btn {
+    padding: 12px 18px;
+    font-size: 14px;
+    white-space: nowrap;
   }
 }
 </style>
