@@ -28,6 +28,7 @@ function createDefaultSettings(): StorefrontPublicSettings {
     checkout: {
       whatsappNumber: '',
       whatsappButtonLabel: 'Konfirmasi via WhatsApp',
+      allowedPaymentMethods: [],
     },
     analytics: {
       meta: {
@@ -67,6 +68,9 @@ function normalizeSettings(input: StorefrontPublicSettings): StorefrontPublicSet
     checkout: {
       whatsappNumber: input.checkout?.whatsappNumber ?? DEFAULT_SETTINGS.checkout.whatsappNumber,
       whatsappButtonLabel: input.checkout?.whatsappButtonLabel ?? DEFAULT_SETTINGS.checkout.whatsappButtonLabel,
+      allowedPaymentMethods: Array.isArray(input.checkout?.allowedPaymentMethods)
+        ? input.checkout.allowedPaymentMethods.filter((value): value is string => typeof value === 'string')
+        : DEFAULT_SETTINGS.checkout.allowedPaymentMethods,
     },
     analytics: {
       meta: {

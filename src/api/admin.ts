@@ -70,6 +70,7 @@ export async function updateStorefrontSettings(payload: {
   checkout?: {
     whatsappNumber?: string
     whatsappButtonLabel?: string
+    allowedPaymentMethods?: string[]
   }
   analytics?: {
     meta?: {

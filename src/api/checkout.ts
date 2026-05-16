@@ -1,5 +1,5 @@
 import { storefrontFetch, parseResponse } from './client'
-import type { Location, ShippingOption, Summary, Order } from '@/types'
+import type { Location, ShippingOption, Summary, Order, PaymentMethodOption } from '@/types'
 
 export async function searchLocations(search: string) {
   const res = await storefrontFetch(`/public/locations?search=${encodeURIComponent(search)}`)
@@ -68,4 +68,14 @@ export async function submitCheckout(payload: CheckoutPayload) {
 export async function getOrder(secretSlug: string) {
   const res = await storefrontFetch(`/public/orders/${secretSlug}`)
   return parseResponse<Order>(res)
+}
+
+export async function getPaymentMethods() {
+  const res = await storefrontFetch('/public/payment-methods')
+  const payload = await parseResponse<{ data?: PaymentMethodOption[] } | PaymentMethodOption[]>(res)
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  return Array.isArray(payload.data) ? payload.data : []
 }

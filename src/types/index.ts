@@ -41,6 +41,7 @@ export interface StorefrontTheme {
 export interface StorefrontCheckoutSettings {
   whatsappNumber: string
   whatsappButtonLabel: string
+  allowedPaymentMethods: string[]
 }
 
 export type MetaPurchaseTrigger = 'checkout_success' | 'order_paid'
@@ -177,6 +178,13 @@ export interface ShippingOption {
   service: string
   cost: number
   etd?: string
+}
+
+export interface PaymentMethodOption {
+  code: string
+  enabled: boolean
+  label: string
+  requires_redirect: boolean
 }
 
 export interface Summary {

@@ -42,6 +42,7 @@ function createDefaultSettings(): StorefrontSettings {
     checkout: {
       whatsappNumber: '',
       whatsappButtonLabel: 'Konfirmasi via WhatsApp',
+      allowedPaymentMethods: [],
     },
     analytics: {
       meta: {
@@ -194,6 +195,9 @@ function normalizeCheckout(value: unknown, defaults: StorefrontCheckoutSettings)
     whatsappButtonLabel: typeof candidate.whatsappButtonLabel === 'string'
       ? sanitizeLabel(candidate.whatsappButtonLabel)
       : defaults.whatsappButtonLabel,
+    allowedPaymentMethods: Array.isArray(candidate.allowedPaymentMethods)
+      ? candidate.allowedPaymentMethods.filter((value): value is string => typeof value === 'string').map(sanitizeLabel)
+      : defaults.allowedPaymentMethods,
   }
 }
 
@@ -335,6 +339,7 @@ export async function setPresentation(
     priceLabelColor?: string
     checkoutWhatsappNumber?: string
     checkoutWhatsappButtonLabel?: string
+    checkoutAllowedPaymentMethods?: string[]
     metaEnabled?: boolean
     metaPixelId?: string
     metaTrackViewContent?: boolean
@@ -408,6 +413,10 @@ export async function setPresentation(
 
   if (typeof values.checkoutWhatsappButtonLabel === 'string') {
     nextSettings.checkout.whatsappButtonLabel = sanitizeLabel(values.checkoutWhatsappButtonLabel)
+  }
+
+  if (Array.isArray(values.checkoutAllowedPaymentMethods)) {
+    nextSettings.checkout.allowedPaymentMethods = values.checkoutAllowedPaymentMethods.map(sanitizeLabel)
   }
 
   if (typeof values.metaEnabled === 'boolean') {

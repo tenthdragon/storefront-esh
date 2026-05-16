@@ -10,8 +10,9 @@ import {
   setItemVisibility,
   updateStorefrontSettings,
 } from '@/api/admin'
+import { getPaymentMethods } from '@/api/checkout'
 import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
-import type { Item, MetaPurchaseTrigger, StorefrontSettings } from '@/types'
+import type { Item, MetaPurchaseTrigger, PaymentMethodOption, StorefrontSettings } from '@/types'
 
 type AdminSection = 'presentation' | 'catalog' | 'checkout' | 'ads'
 
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS: StorefrontSettings = {
   checkout: {
     whatsappNumber: '',
     whatsappButtonLabel: 'Konfirmasi via WhatsApp',
+    allowedPaymentMethods: [],
   },
   analytics: {
     meta: {
@@ -89,6 +91,10 @@ const checkoutError = ref<string | null>(null)
 const checkoutSaved = ref<string | null>(null)
 const checkoutWhatsappNumberInput = ref('')
 const checkoutWhatsappButtonLabelInput = ref('Konfirmasi via WhatsApp')
+const availablePaymentMethods = ref<PaymentMethodOption[]>([])
+const loadingPaymentMethods = ref(false)
+const paymentMethodsError = ref<string | null>(null)
+const checkoutAllowedPaymentMethods = ref<string[]>([])
 
 const adsSaving = ref(false)
 const adsError = ref<string | null>(null)
@@ -152,6 +158,17 @@ const hiddenItemsCount = computed(() => Object.keys(settings.value.items).length
 const previewButtonColor = computed(() => normalizeHexColor(buttonColorInput.value, '#b85c38'))
 const previewPriceLabelColor = computed(() => normalizeHexColor(priceLabelColorInput.value, '#1f1b16'))
 const previewButtonInk = computed(() => getContrastPreviewColor(previewButtonColor.value))
+const scalevEnabledPaymentMethods = computed(() =>
+  availablePaymentMethods.value.filter((method) => method.enabled),
+)
+const effectiveCheckoutPaymentMethods = computed(() => {
+  const allowed = new Set(checkoutAllowedPaymentMethods.value)
+  if (!allowed.size) {
+    return scalevEnabledPaymentMethods.value
+  }
+
+  return scalevEnabledPaymentMethods.value.filter((method) => allowed.has(method.code))
+})
 const enabledMetaEvents = computed(() => {
   let total = 0
   if (metaTrackViewContent.value) total += 1
@@ -179,6 +196,45 @@ function syncPresentationForm() {
 function syncCheckoutForm() {
   checkoutWhatsappNumberInput.value = settings.value.checkout.whatsappNumber
   checkoutWhatsappButtonLabelInput.value = settings.value.checkout.whatsappButtonLabel
+  checkoutAllowedPaymentMethods.value = [...settings.value.checkout.allowedPaymentMethods]
+}
+
+function syncCheckoutAllowedPaymentMethodsWithScalev() {
+  if (!scalevEnabledPaymentMethods.value.length) return
+
+  if (!checkoutAllowedPaymentMethods.value.length) {
+    checkoutAllowedPaymentMethods.value = scalevEnabledPaymentMethods.value.map((method) => method.code)
+    return
+  }
+
+  const enabledCodes = new Set(scalevEnabledPaymentMethods.value.map((method) => method.code))
+  checkoutAllowedPaymentMethods.value = checkoutAllowedPaymentMethods.value.filter((code) => enabledCodes.has(code))
+}
+
+function toggleAllowedPaymentMethod(code: string, checked: boolean) {
+  if (checked) {
+    if (!checkoutAllowedPaymentMethods.value.includes(code)) {
+      checkoutAllowedPaymentMethods.value = [...checkoutAllowedPaymentMethods.value, code]
+    }
+    return
+  }
+
+  checkoutAllowedPaymentMethods.value = checkoutAllowedPaymentMethods.value.filter((value) => value !== code)
+}
+
+async function loadPaymentMethods() {
+  loadingPaymentMethods.value = true
+  paymentMethodsError.value = null
+
+  try {
+    availablePaymentMethods.value = await getPaymentMethods()
+    syncCheckoutAllowedPaymentMethodsWithScalev()
+  } catch (error) {
+    paymentMethodsError.value = (error as Error).message
+    availablePaymentMethods.value = []
+  } finally {
+    loadingPaymentMethods.value = false
+  }
 }
 
 function syncAdsForm() {
@@ -258,9 +314,10 @@ async function loadCatalog() {
 }
 
 async function refreshAdminData() {
+  await loadSettings()
   await Promise.all([
-    loadSettings(),
     loadCatalog(),
+    loadPaymentMethods(),
   ])
 }
 
@@ -368,14 +425,20 @@ async function saveCheckoutSettings() {
   checkoutSaved.value = null
 
   try {
+    if (scalevEnabledPaymentMethods.value.length && !checkoutAllowedPaymentMethods.value.length) {
+      throw new Error('Pilih minimal satu metode pembayaran yang aktif dari Scalev untuk ditampilkan di toko.')
+    }
+
     settings.value = await updateStorefrontSettings({
       checkout: {
         whatsappNumber: checkoutWhatsappNumberInput.value,
         whatsappButtonLabel: checkoutWhatsappButtonLabelInput.value,
+        allowedPaymentMethods: checkoutAllowedPaymentMethods.value,
       },
     })
     syncPublicStorefrontSettings()
     syncCheckoutForm()
+    syncCheckoutAllowedPaymentMethodsWithScalev()
     checkoutSaved.value = 'Pengaturan checkout berhasil disimpan.'
   } catch (error) {
     checkoutError.value = (error as Error).message
@@ -453,6 +516,7 @@ watch(
   [
     checkoutWhatsappNumberInput,
     checkoutWhatsappButtonLabelInput,
+    checkoutAllowedPaymentMethods,
   ],
   () => {
     checkoutSaved.value = null
@@ -548,7 +612,10 @@ watch(
         <article class="panel stat-card">
           <span class="stat-label">Checkout</span>
           <strong>{{ checkoutWhatsappNumberInput.trim() ? 'WA konfirmasi aktif' : 'WA belum diatur' }}</strong>
-          <p>{{ checkoutWhatsappButtonLabelInput.trim() || 'Konfirmasi via WhatsApp' }}</p>
+          <p>
+            {{ effectiveCheckoutPaymentMethods.length }} metode bayar tampil
+            {{ checkoutWhatsappButtonLabelInput.trim() ? `• ${checkoutWhatsappButtonLabelInput.trim()}` : '' }}
+          </p>
         </article>
       </section>
 
@@ -805,12 +872,45 @@ watch(
                 pengaturan storefront Anda, jadi tidak tergantung teks mentah dari payload order.
               </p>
             </div>
+
+            <div class="field field-wide">
+              <span>Metode pembayaran aktif dari Scalev</span>
+              <div v-if="loadingPaymentMethods" class="inline-note">Memuat metode pembayaran dari store...</div>
+              <p v-else-if="paymentMethodsError" class="error-text">{{ paymentMethodsError }}</p>
+              <div v-else-if="!scalevEnabledPaymentMethods.length" class="inline-note">
+                Belum ada metode pembayaran aktif yang terbaca dari Scalev.
+              </div>
+              <div v-else class="toggle-grid">
+                <label
+                  v-for="method in scalevEnabledPaymentMethods"
+                  :key="method.code"
+                  class="checkbox-card"
+                >
+                  <input
+                    :checked="checkoutAllowedPaymentMethods.includes(method.code)"
+                    type="checkbox"
+                    @change="toggleAllowedPaymentMethod(method.code, ($event.target as HTMLInputElement).checked)"
+                  />
+                  <div>
+                    <strong>{{ method.label }}</strong>
+                    <p>{{ method.code }}{{ method.requires_redirect ? ' • redirect' : '' }}</p>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
 
           <aside class="preview-card">
             <p class="stat-label">Preview checkout</p>
             <strong>{{ checkoutWhatsappNumberInput.trim() || 'Nomor WhatsApp belum diisi' }}</strong>
             <p>Tombol konfirmasi pembayaran akan mengarah ke tautan `wa.me` dengan pesan yang sudah terisi.</p>
+            <span>
+              {{
+                effectiveCheckoutPaymentMethods.length
+                  ? effectiveCheckoutPaymentMethods.map((method) => method.label).join(', ')
+                  : 'Metode pembayaran akan mengikuti semua yang aktif di Scalev'
+              }}
+            </span>
             <button
               type="button"
               class="preview-btn"
@@ -1227,6 +1327,11 @@ watch(
 .note-box p {
   color: var(--sf-ink-soft);
   line-height: 1.6;
+}
+
+.inline-note {
+  color: var(--sf-ink-soft);
+  padding: 0.25rem 0;
 }
 
 .toggle-grid {

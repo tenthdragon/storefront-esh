@@ -3,18 +3,22 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAnalyticsStore } from '@/stores/analytics'
-import { getShippingOptions, getCheckoutSummary, submitCheckout } from '@/api/checkout'
+import { getShippingOptions, getCheckoutSummary, getPaymentMethods, submitCheckout } from '@/api/checkout'
 import LocationPicker from '@/components/LocationPicker.vue'
-import type { CartItem, Location, ShippingOption, Summary } from '@/types'
+import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
+import type { CartItem, Location, PaymentMethodOption, ShippingOption, Summary } from '@/types'
 
 type CheckoutStep = 'customer' | 'shipping' | 'confirm'
 
 const router = useRouter()
 const cart = useCartStore()
 const analytics = useAnalyticsStore()
+const storefrontSettings = useStorefrontSettingsStore()
 
 onMounted(async () => {
   await cart.fetchCart()
+  await storefrontSettings.fetchSettings()
+  await loadPaymentMethods()
   if (cart.cart?.items.length) {
     void analytics.trackMetaInitiateCheckout(cart.cart.items, cart.subtotal)
   }
@@ -39,6 +43,8 @@ const selectedShipping = ref<ShippingOption | null>(null)
 const summary = ref<Summary | null>(null)
 const loadingShipping = ref(false)
 const loadingSummary = ref(false)
+const loadingPaymentMethods = ref(false)
+const availablePaymentMethods = ref<PaymentMethodOption[]>([])
 
 const cartItems = computed(() => cart.cart?.items ?? [])
 const needsShipping = computed(() =>
@@ -71,6 +77,17 @@ const customerSubmitLabel = computed(() => {
 
   return 'Lanjutkan'
 })
+const allowedPaymentMethodCodes = computed(() => storefrontSettings.settings.checkout.allowedPaymentMethods)
+const paymentMethods = computed(() => {
+  const enabledMethods = availablePaymentMethods.value.filter((method) => method.enabled)
+  const allowedCodes = allowedPaymentMethodCodes.value
+  if (!allowedCodes.length) {
+    return enabledMethods
+  }
+
+  const allowedSet = new Set(allowedCodes)
+  return enabledMethods.filter((method) => allowedSet.has(method.code))
+})
 const customerPhoneInput = computed({
   get: () => formatPhoneForDisplay(form.value.customer_phone),
   set: (value: string) => {
@@ -90,6 +107,27 @@ function formatPhoneForDisplay(value: string) {
 function onLocationSelect(loc: Location, postalCode: string) {
   selectedLocation.value = loc
   selectedPostalCode.value = postalCode
+}
+
+async function loadPaymentMethods() {
+  loadingPaymentMethods.value = true
+
+  try {
+    availablePaymentMethods.value = await getPaymentMethods()
+    if (!paymentMethods.value.some((method) => method.code === form.value.payment_method)) {
+      form.value.payment_method = paymentMethods.value[0]?.code ?? ''
+    }
+  } catch (e) {
+    error.value = (e as Error).message
+    availablePaymentMethods.value = []
+    form.value.payment_method = ''
+  } finally {
+    loadingPaymentMethods.value = false
+  }
+}
+
+function paymentMethodLabel(method: PaymentMethodOption) {
+  return method.label || method.code
 }
 
 function buildDigitalSummary(): Summary {
@@ -155,6 +193,10 @@ async function goToConfirmationStep() {
 
 async function placeOrder() {
   if (needsShipping.value && (!selectedLocation.value || !selectedShipping.value)) return
+  if (!form.value.payment_method) {
+    error.value = 'Belum ada metode pembayaran yang tersedia untuk checkout ini.'
+    return
+  }
 
   error.value = null
   submitting.value = true
@@ -310,9 +352,12 @@ function goBack() {
       </div>
       <div class="field">
         <label>Metode Pembayaran</label>
-        <select v-model="form.payment_method">
-          <option value="bank_transfer">Transfer Bank</option>
-          <option value="cod">Bayar di Tempat (COD)</option>
+        <select v-model="form.payment_method" :disabled="loadingPaymentMethods || !paymentMethods.length">
+          <option v-if="loadingPaymentMethods" value="">Memuat metode pembayaran...</option>
+          <option v-else-if="!paymentMethods.length" value="">Tidak ada metode pembayaran tersedia</option>
+          <option v-for="method in paymentMethods" :key="method.code" :value="method.code">
+            {{ paymentMethodLabel(method) }}
+          </option>
         </select>
       </div>
       <div class="btn-row">

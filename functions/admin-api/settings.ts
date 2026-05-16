@@ -55,6 +55,7 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     checkout?: {
       whatsappNumber?: unknown
       whatsappButtonLabel?: unknown
+      allowedPaymentMethods?: unknown
     }
     analytics?: {
       meta?: {
@@ -82,6 +83,8 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     && Object.prototype.hasOwnProperty.call(body.checkout, 'whatsappNumber')
   const hasCheckoutWhatsappButtonLabel = !!body?.checkout
     && Object.prototype.hasOwnProperty.call(body.checkout, 'whatsappButtonLabel')
+  const hasCheckoutAllowedPaymentMethods = !!body?.checkout
+    && Object.prototype.hasOwnProperty.call(body.checkout, 'allowedPaymentMethods')
   const hasMetaEnabled = !!body?.analytics?.meta
     && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'enabled')
   const hasMetaPixelId = !!body?.analytics?.meta
@@ -107,6 +110,7 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     && !hasPriceLabelColor
     && !hasCheckoutWhatsappNumber
     && !hasCheckoutWhatsappButtonLabel
+    && !hasCheckoutAllowedPaymentMethods
     && !hasMetaEnabled
     && !hasMetaPixelId
     && !hasMetaTrackViewContent
@@ -127,6 +131,7 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
   const priceLabelColor = body?.theme?.priceLabelColor
   const checkoutWhatsappNumber = body?.checkout?.whatsappNumber
   const checkoutWhatsappButtonLabel = body?.checkout?.whatsappButtonLabel
+  const checkoutAllowedPaymentMethods = body?.checkout?.allowedPaymentMethods
   const metaEnabled = body?.analytics?.meta?.enabled
   const metaPixelId = body?.analytics?.meta?.pixelId
   const metaTrackViewContent = body?.analytics?.meta?.trackViewContent
@@ -185,6 +190,16 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     return errorJson(400, 'Label tombol WhatsApp checkout harus berupa teks.')
   }
 
+  if (
+    hasCheckoutAllowedPaymentMethods
+    && (
+      !Array.isArray(checkoutAllowedPaymentMethods)
+      || checkoutAllowedPaymentMethods.some((value) => typeof value !== 'string')
+    )
+  ) {
+    return errorJson(400, 'Daftar metode pembayaran checkout harus berupa array teks.')
+  }
+
   if (hasMetaEnabled && typeof metaEnabled !== 'boolean') {
     return errorJson(400, 'Status Meta Ads harus berupa boolean.')
   }
@@ -229,6 +244,9 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
       checkoutWhatsappNumber: typeof checkoutWhatsappNumber === 'string' ? checkoutWhatsappNumber : undefined,
       checkoutWhatsappButtonLabel: typeof checkoutWhatsappButtonLabel === 'string'
         ? checkoutWhatsappButtonLabel
+        : undefined,
+      checkoutAllowedPaymentMethods: Array.isArray(checkoutAllowedPaymentMethods)
+        ? checkoutAllowedPaymentMethods.filter((value): value is string => typeof value === 'string')
         : undefined,
       metaEnabled: typeof metaEnabled === 'boolean' ? metaEnabled : undefined,
       metaPixelId: typeof metaPixelId === 'string' ? metaPixelId : undefined,
