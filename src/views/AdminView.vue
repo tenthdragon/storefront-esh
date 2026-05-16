@@ -10,6 +10,7 @@ import {
   setItemVisibility,
   updateStorefrontSettings,
 } from '@/api/admin'
+import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
 import type { Item, MetaPurchaseTrigger, StorefrontSettings } from '@/types'
 
 type AdminSection = 'presentation' | 'catalog' | 'ads'
@@ -49,6 +50,7 @@ const DEFAULT_SETTINGS: StorefrontSettings = {
 }
 
 const settings = ref<StorefrontSettings>(DEFAULT_SETTINGS)
+const storefrontSettings = useStorefrontSettingsStore()
 const items = ref<Item[]>([])
 const count = ref(0)
 const page = ref(1)
@@ -174,6 +176,16 @@ function syncAdsForm() {
   metaPurchaseTrigger.value = settings.value.analytics.meta.purchaseTrigger
 }
 
+function syncPublicStorefrontSettings() {
+  storefrontSettings.applySettings({
+    branding: settings.value.branding,
+    hero: settings.value.hero,
+    sections: settings.value.sections,
+    theme: settings.value.theme,
+    analytics: settings.value.analytics,
+  })
+}
+
 async function loadSession() {
   authError.value = null
   try {
@@ -196,6 +208,7 @@ async function loadSettings() {
 
   try {
     settings.value = await getStorefrontSettings()
+    syncPublicStorefrontSettings()
     syncPresentationForm()
     syncAdsForm()
     settingsLoaded.value = true
@@ -318,6 +331,7 @@ async function savePresentation() {
         priceLabelColor: priceLabelColorInput.value,
       },
     })
+    syncPublicStorefrontSettings()
     syncPresentationForm()
     syncAdsForm()
     presentationSaved.value = 'Presentasi storefront berhasil disimpan.'
@@ -347,6 +361,7 @@ async function saveAdsSettings() {
         },
       },
     })
+    syncPublicStorefrontSettings()
     syncAdsForm()
     adsSaved.value = 'Pengaturan Meta Ads berhasil disimpan.'
   } catch (error) {

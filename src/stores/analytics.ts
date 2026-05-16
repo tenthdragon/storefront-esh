@@ -407,11 +407,14 @@ function isPaidStatus(status?: string | null) {
 export const useAnalyticsStore = defineStore('analytics', () => {
   const storefrontSettings = useStorefrontSettingsStore()
   const bootstrapped = ref(false)
-  const initialPageViewSent = ref(false)
+  const bootstrappedPixelId = ref<string | null>(null)
 
   const metaSettings = computed(() => storefrontSettings.settings.analytics.meta)
   const metaReady = computed(() =>
     metaSettings.value.enabled && metaSettings.value.pixelId.trim().length > 0,
+  )
+  const activeMetaPixelId = computed(() =>
+    metaReady.value ? metaSettings.value.pixelId.trim() : '',
   )
 
   async function sendMetaEvent(input: {
@@ -469,20 +472,20 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     bootstrapped.value = true
     syncMetaAttribution()
 
-    watch(metaReady, (ready) => {
-      if (!ready) return
+    watch(activeMetaPixelId, (pixelId) => {
+      if (!pixelId) return
 
-      ensureMetaPixel(metaSettings.value.pixelId.trim())
-      if (!initialPageViewSent.value) {
+      ensureMetaPixel(pixelId)
+      if (bootstrappedPixelId.value !== pixelId) {
         trackMetaPageView()
-        initialPageViewSent.value = true
+        bootstrappedPixelId.value = pixelId
       }
     }, { immediate: true })
 
     router.afterEach(() => {
       syncMetaAttribution()
-      if (metaReady.value) {
-        ensureMetaPixel(metaSettings.value.pixelId.trim())
+      if (activeMetaPixelId.value) {
+        ensureMetaPixel(activeMetaPixelId.value)
         trackMetaPageView()
       }
     })

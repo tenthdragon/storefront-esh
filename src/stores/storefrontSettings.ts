@@ -41,6 +41,40 @@ function createDefaultSettings(): StorefrontPublicSettings {
 
 const DEFAULT_SETTINGS = createDefaultSettings()
 
+function normalizeSettings(input: StorefrontPublicSettings): StorefrontPublicSettings {
+  return {
+    branding: {
+      storeName: input.branding?.storeName ?? DEFAULT_SETTINGS.branding.storeName,
+    },
+    hero: {
+      title: input.hero?.title ?? DEFAULT_SETTINGS.hero.title,
+      subtitle: input.hero?.subtitle ?? DEFAULT_SETTINGS.hero.subtitle,
+    },
+    sections: {
+      catalog: {
+        visible: input.sections?.catalog?.visible ?? DEFAULT_SETTINGS.sections.catalog.visible,
+        title: input.sections?.catalog?.title ?? DEFAULT_SETTINGS.sections.catalog.title,
+      },
+    },
+    theme: {
+      buttonColor: input.theme?.buttonColor ?? DEFAULT_SETTINGS.theme.buttonColor,
+      priceLabelColor: input.theme?.priceLabelColor ?? DEFAULT_SETTINGS.theme.priceLabelColor,
+    },
+    analytics: {
+      meta: {
+        enabled: input.analytics?.meta?.enabled ?? DEFAULT_SETTINGS.analytics.meta.enabled,
+        pixelId: input.analytics?.meta?.pixelId ?? DEFAULT_SETTINGS.analytics.meta.pixelId,
+        trackViewContent: input.analytics?.meta?.trackViewContent ?? DEFAULT_SETTINGS.analytics.meta.trackViewContent,
+        trackAddToCart: input.analytics?.meta?.trackAddToCart ?? DEFAULT_SETTINGS.analytics.meta.trackAddToCart,
+        trackInitiateCheckout: input.analytics?.meta?.trackInitiateCheckout
+          ?? DEFAULT_SETTINGS.analytics.meta.trackInitiateCheckout,
+        trackPurchase: input.analytics?.meta?.trackPurchase ?? DEFAULT_SETTINGS.analytics.meta.trackPurchase,
+        purchaseTrigger: input.analytics?.meta?.purchaseTrigger ?? DEFAULT_SETTINGS.analytics.meta.purchaseTrigger,
+      },
+    },
+  }
+}
+
 function normalizeHexColor(value: string, fallback = DEFAULT_BUTTON_COLOR) {
   const trimmed = value.trim()
   const match = trimmed.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
@@ -123,6 +157,12 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
     '--sf-price-ink': priceLabelContrast.value,
   }))
 
+  function applySettings(nextSettings: StorefrontPublicSettings) {
+    settings.value = normalizeSettings(nextSettings)
+    loaded.value = true
+    error.value = null
+  }
+
   async function fetchSettings() {
     if (loaded.value) return
     if (pendingRequest) return pendingRequest
@@ -131,8 +171,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
       loading.value = true
       error.value = null
       try {
-        settings.value = await getPublicStorefrontSettings()
-        loaded.value = true
+        applySettings(await getPublicStorefrontSettings())
       } catch (e) {
         error.value = (e as Error).message
       } finally {
@@ -158,6 +197,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
     buttonColor,
     priceLabelColor,
     themeVars,
+    applySettings,
     fetchSettings,
   }
 })
