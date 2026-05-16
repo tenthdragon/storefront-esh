@@ -65,6 +65,7 @@ export async function updateStorefrontPresentation(payload: {
   }
   theme?: {
     buttonColor?: string
+    priceLabelColor?: string
   }
 }) {
   const res = await adminApiFetch('/settings', {

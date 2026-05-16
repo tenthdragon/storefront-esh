@@ -33,6 +33,7 @@ function createDefaultSettings(): StorefrontSettings {
     },
     theme: {
       buttonColor: '#b85c38',
+      priceLabelColor: '#1f1b16',
     },
   }
 }
@@ -151,6 +152,9 @@ function normalizeTheme(value: unknown, defaults: StorefrontTheme): StorefrontTh
     buttonColor: typeof candidate.buttonColor === 'string'
       ? normalizeHexColor(candidate.buttonColor, defaults.buttonColor)
       : defaults.buttonColor,
+    priceLabelColor: typeof candidate.priceLabelColor === 'string'
+      ? normalizeHexColor(candidate.priceLabelColor, defaults.priceLabelColor)
+      : defaults.priceLabelColor,
   }
 }
 
@@ -236,6 +240,7 @@ export async function setPresentation(
     catalogVisible?: boolean
     catalogTitle?: string
     buttonColor?: string
+    priceLabelColor?: string
   },
 ) {
   const settings = await loadSettings(env)
@@ -281,6 +286,10 @@ export async function setPresentation(
 
   if (typeof values.buttonColor === 'string') {
     nextSettings.theme.buttonColor = normalizeHexColor(values.buttonColor, settings.theme.buttonColor)
+  }
+
+  if (typeof values.priceLabelColor === 'string') {
+    nextSettings.theme.priceLabelColor = normalizeHexColor(values.priceLabelColor, settings.theme.priceLabelColor)
   }
 
   await saveSettings(env, nextSettings)

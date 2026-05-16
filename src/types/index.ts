@@ -34,6 +34,7 @@ export interface StorefrontSections {
 
 export interface StorefrontTheme {
   buttonColor: string
+  priceLabelColor: string
 }
 
 export interface StorefrontSettings {

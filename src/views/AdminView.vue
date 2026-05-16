@@ -32,6 +32,7 @@ const settings = ref<StorefrontSettings>({
   },
   theme: {
     buttonColor: '#b85c38',
+    priceLabelColor: '#1f1b16',
   },
 })
 const page = ref(1)
@@ -55,6 +56,7 @@ const heroSubtitleInput = ref('')
 const showCatalogHeading = ref(true)
 const catalogHeadingInput = ref('Katalog Produk')
 const buttonColorInput = ref('#b85c38')
+const priceLabelColorInput = ref('#1f1b16')
 const PER_PAGE = 20
 let searchTimer: ReturnType<typeof setTimeout>
 
@@ -78,12 +80,34 @@ function typeLabel(entityType: Item['entity_type']) {
   return entityType === 'product' ? 'Produk' : 'Bundle'
 }
 
+function getContrastPreviewColor(hex: string) {
+  const value = hex.replace('#', '')
+  const normalized = value.length === 3
+    ? value.split('').map((char) => char + char).join('')
+    : value
+  const r = Number.parseInt(normalized.slice(0, 2), 16)
+  const g = Number.parseInt(normalized.slice(2, 4), 16)
+  const b = Number.parseInt(normalized.slice(4, 6), 16)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000
+  return brightness > 155 ? '#1f1b16' : '#faf7f2'
+}
+
 const previewButtonColor = computed(() => {
   const trimmed = buttonColorInput.value.trim()
   return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)
     ? trimmed.startsWith('#') ? trimmed : `#${trimmed}`
     : '#b85c38'
 })
+
+const previewPriceLabelColor = computed(() => {
+  const trimmed = priceLabelColorInput.value.trim()
+  return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)
+    ? trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+    : '#1f1b16'
+})
+
+const previewButtonInk = computed(() => getContrastPreviewColor(previewButtonColor.value))
+const previewPriceLabelInk = computed(() => getContrastPreviewColor(previewPriceLabelColor.value))
 
 function syncPresentationForm() {
   storeNameInput.value = settings.value.branding.storeName
@@ -92,6 +116,7 @@ function syncPresentationForm() {
   showCatalogHeading.value = settings.value.sections.catalog.visible
   catalogHeadingInput.value = settings.value.sections.catalog.title
   buttonColorInput.value = settings.value.theme.buttonColor
+  priceLabelColorInput.value = settings.value.theme.priceLabelColor
 }
 
 async function loadSession() {
@@ -210,6 +235,7 @@ async function savePresentation() {
       },
       theme: {
         buttonColor: buttonColorInput.value,
+        priceLabelColor: priceLabelColorInput.value,
       },
     })
     syncPresentationForm()
@@ -243,7 +269,7 @@ watch(search, () => {
   }, 300)
 })
 
-watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, catalogHeadingInput, buttonColorInput], () => {
+watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, catalogHeadingInput, buttonColorInput, priceLabelColorInput], () => {
   presentationSaved.value = null
 })
 </script>
@@ -303,7 +329,7 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
           <p class="eyebrow">Branding & Labels</p>
           <h2>Teks dan nuansa storefront</h2>
           <p class="subcopy">
-            Atur nama toko, area hero seperti referensi, judul section katalog, dan warna tombol utama.
+            Atur nama toko, area hero seperti referensi, judul section katalog, warna tombol utama, dan warna label harga.
           </p>
         </div>
 
@@ -363,6 +389,19 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
             </div>
           </label>
 
+          <label class="field">
+            <span>Warna label harga</span>
+            <div class="color-field">
+              <input v-model="priceLabelColorInput" type="color" class="color-picker" />
+              <input
+                v-model="priceLabelColorInput"
+                type="text"
+                class="color-input"
+                placeholder="#1F1B16"
+              />
+            </div>
+          </label>
+
           <div class="preview-card">
             <p class="stat-label">Preview singkat</p>
             <strong>{{ storeNameInput.trim() || 'Toko' }}</strong>
@@ -376,10 +415,16 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
             <button
               type="button"
               class="preview-btn"
-              :style="{ backgroundColor: previewButtonColor, borderColor: previewButtonColor }"
+              :style="{ backgroundColor: previewButtonColor, borderColor: previewButtonColor, color: previewButtonInk }"
             >
               Tombol Preview
             </button>
+            <span
+              class="preview-price-tag"
+              :style="{ backgroundColor: previewPriceLabelColor, borderColor: previewPriceLabelColor, color: previewPriceLabelInk }"
+            >
+              Rp195.000
+            </span>
           </div>
         </div>
 
@@ -643,6 +688,19 @@ h1 {
   color: #fff;
   font: inherit;
   font-weight: 600;
+}
+
+.preview-price-tag {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid;
+  color: #fff;
+  font-family: var(--sf-mono);
+  font-size: 11px;
+  letter-spacing: -0.01em;
 }
 
 .color-field {

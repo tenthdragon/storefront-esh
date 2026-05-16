@@ -50,6 +50,7 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     }
     theme?: {
       buttonColor?: unknown
+      priceLabelColor?: unknown
     }
   } | null
 
@@ -61,8 +62,9 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
   const hasCatalogTitle = !!body?.sections?.catalog
     && Object.prototype.hasOwnProperty.call(body.sections.catalog, 'title')
   const hasButtonColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'buttonColor')
+  const hasPriceLabelColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'priceLabelColor')
 
-  if (!hasStoreName && !hasHeroTitle && !hasHeroSubtitle && !hasCatalogVisible && !hasCatalogTitle && !hasButtonColor) {
+  if (!hasStoreName && !hasHeroTitle && !hasHeroSubtitle && !hasCatalogVisible && !hasCatalogTitle && !hasButtonColor && !hasPriceLabelColor) {
     return errorJson(400, 'Payload pengaturan tampilan tidak valid.')
   }
 
@@ -72,6 +74,7 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
   const catalogVisible = body?.sections?.catalog?.visible
   const catalogTitle = body?.sections?.catalog?.title
   const buttonColor = body?.theme?.buttonColor
+  const priceLabelColor = body?.theme?.priceLabelColor
 
   if (hasStoreName && typeof storeName !== 'string') {
     return errorJson(400, 'Nama toko harus berupa teks.')
@@ -104,6 +107,17 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     }
   }
 
+  if (hasPriceLabelColor) {
+    if (typeof priceLabelColor !== 'string') {
+      return errorJson(400, 'Warna label harga harus berupa teks.')
+    }
+
+    const isHexColor = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(priceLabelColor.trim())
+    if (!isHexColor) {
+      return errorJson(400, 'Warna label harga harus berupa kode hex seperti #1F1B16.')
+    }
+  }
+
   try {
     return json(await setPresentation(context.env, {
       storeName: typeof storeName === 'string' ? storeName : undefined,
@@ -112,6 +126,7 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
       catalogVisible: typeof catalogVisible === 'boolean' ? catalogVisible : undefined,
       catalogTitle: typeof catalogTitle === 'string' ? catalogTitle : undefined,
       buttonColor: typeof buttonColor === 'string' ? buttonColor : undefined,
+      priceLabelColor: typeof priceLabelColor === 'string' ? priceLabelColor : undefined,
     }))
   } catch (error) {
     return errorJson(500, (error as Error).message)

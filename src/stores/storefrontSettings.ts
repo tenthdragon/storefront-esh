@@ -4,6 +4,7 @@ import { getPublicStorefrontSettings } from '@/api/storefront-settings'
 import type { StorefrontPublicSettings } from '@/types'
 
 const DEFAULT_BUTTON_COLOR = '#b85c38'
+const DEFAULT_PRICE_LABEL_COLOR = '#1f1b16'
 
 function createDefaultSettings(): StorefrontPublicSettings {
   return {
@@ -22,6 +23,7 @@ function createDefaultSettings(): StorefrontPublicSettings {
     },
     theme: {
       buttonColor: DEFAULT_BUTTON_COLOR,
+      priceLabelColor: DEFAULT_PRICE_LABEL_COLOR,
     },
   }
 }
@@ -93,16 +95,20 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
   const catalogHeadingVisible = computed(() => settings.value.sections.catalog.visible)
   const catalogHeadingTitle = computed(() => settings.value.sections.catalog.title || DEFAULT_SETTINGS.sections.catalog.title)
   const buttonColor = computed(() => normalizeHexColor(settings.value.theme.buttonColor, DEFAULT_BUTTON_COLOR))
+  const priceLabelColor = computed(() => normalizeHexColor(settings.value.theme.priceLabelColor, DEFAULT_PRICE_LABEL_COLOR))
   const accentStrong = computed(() => mixColors(buttonColor.value, '#1f1b16', 0.22))
   const accentSoft = computed(() => mixColors(buttonColor.value, '#faf7f2', 0.76))
   const accentWash = computed(() => withAlpha(buttonColor.value, 0.12))
   const accentContrast = computed(() => getContrastColor(buttonColor.value))
+  const priceLabelContrast = computed(() => getContrastColor(priceLabelColor.value))
   const themeVars = computed<Record<string, string>>(() => ({
     '--sf-accent': buttonColor.value,
     '--sf-accent-strong': accentStrong.value,
     '--sf-accent-soft': accentSoft.value,
     '--sf-accent-wash': accentWash.value,
     '--sf-accent-contrast': accentContrast.value,
+    '--sf-price-bg': priceLabelColor.value,
+    '--sf-price-ink': priceLabelContrast.value,
   }))
 
   async function fetchSettings() {
@@ -137,6 +143,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
     catalogHeadingVisible,
     catalogHeadingTitle,
     buttonColor,
+    priceLabelColor,
     themeVars,
     fetchSettings,
   }
