@@ -2,11 +2,44 @@ import type { CatalogItem } from './types'
 
 const API_BASE = 'https://api.scalev.com'
 
+function normalizeHeaderValue(value: string | null) {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+function getOriginalClientIp(request: Request) {
+  return normalizeHeaderValue(request.headers.get('cf-connecting-ip'))
+}
+
+function getOriginalClientIpv6(request: Request) {
+  return normalizeHeaderValue(request.headers.get('cf-connecting-ipv6'))
+}
+
 function buildForwardHeaders(request: Request) {
   const headers = new Headers(request.headers)
   headers.delete('origin')
   headers.delete('referer')
   headers.delete('cookie')
+  headers.delete('x-forwarded-for')
+  headers.delete('x-real-ip')
+  headers.delete('true-client-ip')
+  headers.delete('x-original-client-ip')
+  headers.delete('x-original-client-ipv6')
+
+  const originalClientIp = getOriginalClientIp(request)
+  const originalClientIpv6 = getOriginalClientIpv6(request)
+
+  if (originalClientIp) {
+    headers.set('x-forwarded-for', originalClientIp)
+    headers.set('x-real-ip', originalClientIp)
+    headers.set('x-original-client-ip', originalClientIp)
+    headers.set('true-client-ip', originalClientIp)
+  }
+
+  if (originalClientIpv6) {
+    headers.set('x-original-client-ipv6', originalClientIpv6)
+  }
+
   return headers
 }
 
