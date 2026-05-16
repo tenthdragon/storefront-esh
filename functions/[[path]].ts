@@ -20,30 +20,45 @@ function isStorefrontHtmlPath(pathname: string) {
   )
 }
 
-function buildBootstrapScript(settings: StorefrontPublicSettings) {
+function buildSettingsScript(settings: StorefrontPublicSettings) {
   const serializedSettings = escapeInlineJson(settings)
-  const pixelId = settings.analytics.meta.enabled ? settings.analytics.meta.pixelId.trim() : ''
-  const serializedPixelId = escapeInlineJson(pixelId)
-
-  const lines = [
+  return [
     `window.__STOREFRONT_PUBLIC_SETTINGS__=${serializedSettings};`,
     'window.__STOREFRONT_PUBLIC_SETTINGS_PROMISE__=Promise.resolve(window.__STOREFRONT_PUBLIC_SETTINGS__);',
-  ]
+  ].join('')
+}
+
+function buildMetaPixelScript(pixelId: string) {
+  const normalizedPixelId = pixelId.trim()
+  if (!normalizedPixelId) return ''
+
+  const serializedPixelId = escapeInlineJson(normalizedPixelId)
+  return [
+    '!function(f,b,e,v,n,t,s)',
+    "{if(f.fbq)return;n=f.fbq=function(){n.callMethod?",
+    "n.callMethod.apply(n,arguments):n.queue.push(arguments)};",
+    "if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';",
+    `n.queue=[];t=b.createElement(e);t.id='${META_SCRIPT_ID}';t.async=!0;`,
+    "t.src=v;s=b.getElementsByTagName(e)[0];",
+    "if(s&&s.parentNode){s.parentNode.insertBefore(t,s)}else{b.head.appendChild(t)}}",
+    "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');",
+    `fbq('init',${serializedPixelId});`,
+    "fbq('track', 'PageView');",
+    `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=${serializedPixelId};`,
+    `window.__STOREFRONT_META_PIXEL_IDS__={${serializedPixelId}:true};`,
+  ].join('')
+}
+
+function buildHeadMarkup(settings: StorefrontPublicSettings) {
+  const pixelId = settings.analytics.meta.enabled ? settings.analytics.meta.pixelId.trim() : ''
+  const blocks = []
 
   if (pixelId) {
-    lines.push(
-      'window.__STOREFRONT_META_PIXEL_IDS__=window.__STOREFRONT_META_PIXEL_IDS__||{};',
-      `if(!window.__STOREFRONT_META_PIXEL_IDS__[${serializedPixelId}]){`,
-      `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.id='${META_SCRIPT_ID}';t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];if(s&&s.parentNode){s.parentNode.insertBefore(t,s)}else{b.head.appendChild(t)}}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');`,
-      `fbq('init',${serializedPixelId});`,
-      `fbq('track','PageView');`,
-      `window.__STOREFRONT_META_PIXEL_IDS__[${serializedPixelId}]=true;`,
-      '}',
-      `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=${serializedPixelId};`,
-    )
+    blocks.push(`<script>${buildMetaPixelScript(pixelId)}</script>`)
   }
 
-  return lines.join('')
+  blocks.push(`<script>${buildSettingsScript(settings)}</script>`)
+  return blocks.join('')
 }
 
 function buildNoscriptPixel(pixelId: string) {
@@ -54,10 +69,10 @@ function buildNoscriptPixel(pixelId: string) {
 }
 
 class HeadScriptInjector {
-  constructor(private script: string) {}
+  constructor(private markup: string) {}
 
   element(element: Element) {
-    element.prepend(`<script>${this.script}</script>`, { html: true })
+    element.prepend(this.markup, { html: true })
   }
 }
 
@@ -81,7 +96,7 @@ export const onRequest: PagesFunction<StorefrontEnv> = async (context) => {
 
   const settings = toPublicSettings(await loadSettings(context.env))
   const pixelId = settings.analytics.meta.enabled ? settings.analytics.meta.pixelId.trim() : ''
-  const injector = new HeadScriptInjector(buildBootstrapScript(settings))
+  const injector = new HeadScriptInjector(buildHeadMarkup(settings))
   const noscriptInjector = new BodyNoscriptInjector(buildNoscriptPixel(pixelId))
   return new HTMLRewriter()
     .on('head', injector)
