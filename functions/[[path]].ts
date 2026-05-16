@@ -34,11 +34,11 @@ function buildBootstrapScript(settings: StorefrontPublicSettings) {
     lines.push(
       'window.__STOREFRONT_META_PIXEL_IDS__=window.__STOREFRONT_META_PIXEL_IDS__||{};',
       `if(!window.__STOREFRONT_META_PIXEL_IDS__[${serializedPixelId}]){`,
-      `!(function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.id='${META_SCRIPT_ID}';t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];if(s&&s.parentNode){s.parentNode.insertBefore(t,s)}else{b.head.appendChild(t)}})(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');`,
+      `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.id='${META_SCRIPT_ID}';t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];if(s&&s.parentNode){s.parentNode.insertBefore(t,s)}else{b.head.appendChild(t)}}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');`,
       `fbq('init',${serializedPixelId});`,
+      `fbq('track','PageView');`,
       `window.__STOREFRONT_META_PIXEL_IDS__[${serializedPixelId}]=true;`,
       '}',
-      `fbq('track','PageView');`,
       `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=${serializedPixelId};`,
     )
   }
@@ -46,11 +46,27 @@ function buildBootstrapScript(settings: StorefrontPublicSettings) {
   return lines.join('')
 }
 
+function buildNoscriptPixel(pixelId: string) {
+  if (!pixelId.trim()) return ''
+
+  const escapedPixelId = pixelId.replace(/"/g, '&quot;')
+  return `<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${escapedPixelId}&ev=PageView&noscript=1" alt=""/></noscript>`
+}
+
 class HeadScriptInjector {
   constructor(private script: string) {}
 
   element(element: Element) {
-    element.append(`<script>${this.script}</script>`, { html: true })
+    element.prepend(`<script>${this.script}</script>`, { html: true })
+  }
+}
+
+class BodyNoscriptInjector {
+  constructor(private markup: string) {}
+
+  element(element: Element) {
+    if (!this.markup) return
+    element.prepend(this.markup, { html: true })
   }
 }
 
@@ -64,6 +80,11 @@ export const onRequest: PagesFunction<StorefrontEnv> = async (context) => {
   }
 
   const settings = toPublicSettings(await loadSettings(context.env))
+  const pixelId = settings.analytics.meta.enabled ? settings.analytics.meta.pixelId.trim() : ''
   const injector = new HeadScriptInjector(buildBootstrapScript(settings))
-  return new HTMLRewriter().on('head', injector).transform(response)
+  const noscriptInjector = new BodyNoscriptInjector(buildNoscriptPixel(pixelId))
+  return new HTMLRewriter()
+    .on('head', injector)
+    .on('body', noscriptInjector)
+    .transform(response)
 }
