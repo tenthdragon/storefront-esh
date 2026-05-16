@@ -86,19 +86,27 @@ function onPostalChange() {
 
 .input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d1d1;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  padding: 13px 15px;
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 18px;
+  font-size: 14px;
+  background: #fffdf9;
+  color: var(--sf-ink);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--sf-ink);
 }
 
 .searching {
   position: absolute;
-  right: 0.75rem;
+  right: 0.95rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 11px;
+  color: var(--sf-ink-muted);
+  font-family: var(--sf-mono);
 }
 
 .results {
@@ -106,30 +114,30 @@ function onPostalChange() {
   top: 100%;
   left: 0;
   right: 0;
-  background: #fff;
-  border: 1px solid #d1d1d1;
-  border-top: none;
-  border-radius: 0 0 6px 6px;
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 18px;
   list-style: none;
   max-height: 200px;
   overflow-y: auto;
   z-index: 200;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 40px rgba(31, 27, 22, 0.08);
+  margin-top: 8px;
 }
 
 .results li {
-  padding: 0.5rem 0.75rem;
+  padding: 0.75rem 0.95rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .results li:hover {
-  background: #f5f5f5;
+  background: var(--sf-accent-wash);
 }
 
 .sub {
-  color: #888;
-  font-size: 0.8rem;
+  color: var(--sf-ink-muted);
+  font-size: 12px;
 }
 
 .postal {
@@ -140,7 +148,10 @@ function onPostalChange() {
 }
 
 .postal label {
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 12px;
+  font-family: var(--sf-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sf-ink-soft);
 }
 </style>

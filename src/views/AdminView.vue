@@ -20,11 +20,18 @@ const settings = ref<StorefrontSettings>({
   branding: {
     storeName: '',
   },
+  hero: {
+    title: 'Koleksi digital pilihan untuk belajar, bertumbuh, dan membangun langkah berikutnya dengan lebih jelas.',
+    subtitle: 'Materi yang dipilih satu per satu untuk membantu Anda bergerak lebih tenang, lebih paham, dan lebih siap menghadapi era baru.',
+  },
   sections: {
     catalog: {
       visible: true,
       title: 'Katalog Produk',
     },
+  },
+  theme: {
+    buttonColor: '#b85c38',
   },
 })
 const page = ref(1)
@@ -43,8 +50,11 @@ const savingPresentation = ref(false)
 const presentationError = ref<string | null>(null)
 const presentationSaved = ref<string | null>(null)
 const storeNameInput = ref('')
+const heroTitleInput = ref('')
+const heroSubtitleInput = ref('')
 const showCatalogHeading = ref(true)
 const catalogHeadingInput = ref('Katalog Produk')
+const buttonColorInput = ref('#b85c38')
 const PER_PAGE = 20
 let searchTimer: ReturnType<typeof setTimeout>
 
@@ -68,10 +78,20 @@ function typeLabel(entityType: Item['entity_type']) {
   return entityType === 'product' ? 'Produk' : 'Bundle'
 }
 
+const previewButtonColor = computed(() => {
+  const trimmed = buttonColorInput.value.trim()
+  return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)
+    ? trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+    : '#b85c38'
+})
+
 function syncPresentationForm() {
   storeNameInput.value = settings.value.branding.storeName
+  heroTitleInput.value = settings.value.hero.title
+  heroSubtitleInput.value = settings.value.hero.subtitle
   showCatalogHeading.value = settings.value.sections.catalog.visible
   catalogHeadingInput.value = settings.value.sections.catalog.title
+  buttonColorInput.value = settings.value.theme.buttonColor
 }
 
 async function loadSession() {
@@ -178,15 +198,22 @@ async function savePresentation() {
       branding: {
         storeName: storeNameInput.value,
       },
+      hero: {
+        title: heroTitleInput.value,
+        subtitle: heroSubtitleInput.value,
+      },
       sections: {
         catalog: {
           visible: showCatalogHeading.value,
           title: catalogHeadingInput.value,
         },
       },
+      theme: {
+        buttonColor: buttonColorInput.value,
+      },
     })
     syncPresentationForm()
-    presentationSaved.value = 'Label storefront berhasil disimpan.'
+    presentationSaved.value = 'Tampilan storefront berhasil disimpan.'
   } catch (e) {
     presentationError.value = (e as Error).message
   } finally {
@@ -216,7 +243,7 @@ watch(search, () => {
   }, 300)
 })
 
-watch([storeNameInput, showCatalogHeading, catalogHeadingInput], () => {
+watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, catalogHeadingInput, buttonColorInput], () => {
   presentationSaved.value = null
 })
 </script>
@@ -274,9 +301,9 @@ watch([storeNameInput, showCatalogHeading, catalogHeadingInput], () => {
       <form class="panel settings-panel" @submit.prevent="savePresentation">
         <div class="settings-copy">
           <p class="eyebrow">Branding & Labels</p>
-          <h2>Teks storefront publik</h2>
+          <h2>Teks dan nuansa storefront</h2>
           <p class="subcopy">
-            Atur nama toko di navbar dan tentukan apakah judul section katalog ditampilkan atau disembunyikan.
+            Atur nama toko, area hero seperti referensi, judul section katalog, dan warna tombol utama.
           </p>
         </div>
 
@@ -290,13 +317,31 @@ watch([storeNameInput, showCatalogHeading, catalogHeadingInput], () => {
             />
           </label>
 
+          <label class="field field-wide">
+            <span>Hero title</span>
+            <textarea
+              v-model="heroTitleInput"
+              rows="4"
+              placeholder="Tulis judul hero utama storefront"
+            />
+          </label>
+
+          <label class="field field-wide">
+            <span>Hero subtitle</span>
+            <textarea
+              v-model="heroSubtitleInput"
+              rows="3"
+              placeholder="Tulis penjelasan singkat di bawah hero"
+            />
+          </label>
+
           <label class="field checkbox-field">
-            <span>Tampilkan judul katalog</span>
+            <span>Tampilkan nama section katalog</span>
             <input v-model="showCatalogHeading" type="checkbox" />
           </label>
 
           <label class="field">
-            <span>Judul katalog</span>
+            <span>Nama section katalog</span>
             <input
               v-model="catalogHeadingInput"
               type="text"
@@ -305,16 +350,36 @@ watch([storeNameInput, showCatalogHeading, catalogHeadingInput], () => {
             />
           </label>
 
+          <label class="field">
+            <span>Warna tombol</span>
+            <div class="color-field">
+              <input v-model="buttonColorInput" type="color" class="color-picker" />
+              <input
+                v-model="buttonColorInput"
+                type="text"
+                class="color-input"
+                placeholder="#B85C38"
+              />
+            </div>
+          </label>
+
           <div class="preview-card">
             <p class="stat-label">Preview singkat</p>
             <strong>{{ storeNameInput.trim() || 'Toko' }}</strong>
-            <span>
-              {{
-                showCatalogHeading
-                  ? catalogHeadingInput.trim() || 'Katalog Produk'
-                  : 'Judul katalog disembunyikan'
-              }}
-            </span>
+            <h3>{{ heroTitleInput.trim() || settings.hero.title }}</h3>
+            <p>{{ heroSubtitleInput.trim() || settings.hero.subtitle }}</p>
+            <span>{{
+              showCatalogHeading
+                ? catalogHeadingInput.trim() || 'Katalog Produk'
+                : 'Judul katalog disembunyikan'
+            }}</span>
+            <button
+              type="button"
+              class="preview-btn"
+              :style="{ backgroundColor: previewButtonColor, borderColor: previewButtonColor }"
+            >
+              Tombol Preview
+            </button>
           </div>
         </div>
 
@@ -424,6 +489,11 @@ h1 {
   line-height: 1.5;
 }
 
+.settings-copy h2 {
+  font-size: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
 .panel {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -466,12 +536,18 @@ h1 {
 }
 
 .field input,
+.field textarea,
 .search-box input {
   width: 100%;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
   padding: 0.75rem 0.85rem;
   font: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 110px;
 }
 
 .primary-btn,
@@ -522,6 +598,10 @@ h1 {
   align-items: start;
 }
 
+.field-wide {
+  grid-column: 1 / -1;
+}
+
 .checkbox-field {
   align-content: start;
 }
@@ -544,8 +624,43 @@ h1 {
   font-size: 1.1rem;
 }
 
+.preview-card h3 {
+  font-size: 1.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.preview-card p,
 .preview-card span {
   color: #475569;
+}
+
+.preview-btn {
+  justify-self: start;
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+}
+
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.color-picker {
+  width: 54px !important;
+  min-width: 54px;
+  height: 44px;
+  padding: 0.2rem !important;
+  border-radius: 12px !important;
+}
+
+.color-input {
+  flex: 1;
 }
 
 .settings-actions {

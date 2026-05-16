@@ -22,67 +22,83 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="order-page">
-    <div v-if="loading" class="loading">Memuat pesanan...</div>
+  <section class="order-page">
+    <div v-if="loading" class="state-block">Memuat pesanan...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="order">
+    <div v-else-if="order" class="order-content">
       <div class="success-banner">
-        <h1>Pesanan Berhasil Dibuat!</h1>
-        <p>Terima kasih, <strong>{{ order.customer_name }}</strong>. Silakan lakukan pembayaran sesuai instruksi di bawah.</p>
+        <span class="eyebrow">Pesanan berhasil</span>
+        <h1>Terima kasih, {{ order.customer_name }}.</h1>
+        <p>Silakan lanjutkan pembayaran sesuai instruksi di bawah agar pesanan Anda segera diproses.</p>
       </div>
       <PaymentInstructions :order="order" />
       <RouterLink to="/" class="btn-continue">Lanjut Belanja</RouterLink>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped>
 .order-page {
-  max-width: 600px;
+  max-width: 760px;
   margin: 0 auto;
+  padding-top: 34px;
 }
 
-.loading {
+.state-block {
   text-align: center;
-  padding: 4rem;
-  color: #888;
+  padding: 64px 16px;
+  color: var(--sf-ink-soft);
 }
 
 .error {
-  background: #fff5f5;
-  border: 1px solid #e53e3e;
-  color: #e53e3e;
-  padding: 1rem;
-  border-radius: 6px;
+  background: #fff4ef;
+  border: 1px solid var(--sf-accent-soft);
+  color: var(--sf-accent-strong);
+  padding: 16px 18px;
+  border-radius: 18px;
+}
+
+.order-content {
+  display: grid;
+  gap: 18px;
 }
 
 .success-banner {
-  background: #f0fff4;
-  border: 1px solid #22c55e;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #f7fbf8 0%, #fdf8f2 100%);
+  border: 1px solid var(--sf-line);
+  border-radius: 24px;
+  padding: 24px;
 }
 
-.success-banner h1 {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #15803d;
-  margin-bottom: 0.5rem;
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-family: var(--sf-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sf-accent-strong);
+}
+
+h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
 }
 
 .success-banner p {
-  font-size: 0.9rem;
-  color: #166534;
+  color: var(--sf-ink-soft);
 }
 
 .btn-continue {
-  display: inline-block;
-  margin-top: 1.5rem;
-  padding: 0.6rem 1.5rem;
-  background: #e53e3e;
-  color: #fff;
-  border-radius: 6px;
+  width: fit-content;
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--sf-accent);
+  background: var(--sf-accent);
+  color: var(--sf-accent-contrast);
   text-decoration: none;
   font-weight: 600;
 }

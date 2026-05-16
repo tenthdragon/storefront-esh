@@ -115,19 +115,22 @@ function formatPrice(price: number) {
 </script>
 
 <template>
-  <div class="checkout">
-    <h1>Checkout</h1>
+  <section class="checkout-page">
+    <header class="page-head">
+      <span class="eyebrow">Checkout</span>
+      <h1>Selesaikan pesanan Anda</h1>
+      <p>Lengkapi informasi pengiriman, pilih layanan kurir, lalu konfirmasi pembayaran.</p>
+    </header>
 
     <div class="steps">
-      <span :class="{ active: step === 1, done: step > 1 }">1. Info Pengiriman</span>
-      <span :class="{ active: step === 2, done: step > 2 }">2. Pilih Kurir</span>
+      <span :class="{ active: step === 1, done: step > 1 }">1. Pengiriman</span>
+      <span :class="{ active: step === 2, done: step > 2 }">2. Kurir</span>
       <span :class="{ active: step === 3 }">3. Konfirmasi</span>
     </div>
 
     <div v-if="error" class="error">{{ error }}</div>
 
-    <!-- Step 1: Info pengiriman -->
-    <form v-if="step === 1" @submit.prevent="goToStep2" class="form">
+    <form v-if="step === 1" class="panel form" @submit.prevent="goToStep2">
       <div class="field">
         <label>Nama Lengkap</label>
         <input v-model="form.customer_name" required />
@@ -153,11 +156,10 @@ function formatPrice(price: number) {
       </button>
     </form>
 
-    <!-- Step 2: Pilih kurir -->
-    <div v-if="step === 2" class="form">
+    <div v-if="step === 2" class="panel form">
       <div v-if="!shippingOptions.length" class="empty">Tidak ada opsi pengiriman tersedia.</div>
       <div v-else>
-        <p class="section-label">Pilih Layanan Pengiriman:</p>
+        <p class="section-label">Pilih Layanan Pengiriman</p>
         <div
           v-for="opt in shippingOptions"
           :key="`${opt.courier}-${opt.service}`"
@@ -172,15 +174,14 @@ function formatPrice(price: number) {
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn-outline" @click="step = 1">Kembali</button>
-        <button class="btn" :disabled="!selectedShipping || loadingSummary" @click="goToStep3">
+        <button class="btn-outline" type="button" @click="step = 1">Kembali</button>
+        <button class="btn" :disabled="!selectedShipping || loadingSummary" type="button" @click="goToStep3">
           {{ loadingSummary ? 'Memuat...' : 'Lihat Ringkasan' }}
         </button>
       </div>
     </div>
 
-    <!-- Step 3: Konfirmasi -->
-    <div v-if="step === 3 && summary" class="form">
+    <div v-if="step === 3 && summary" class="panel form">
       <p class="section-label">Ringkasan Pesanan</p>
       <div class="summary-rows">
         <div class="sum-row">
@@ -204,135 +205,212 @@ function formatPrice(price: number) {
         </select>
       </div>
       <div class="btn-row">
-        <button class="btn-outline" @click="step = 2">Kembali</button>
-        <button class="btn" :disabled="submitting" @click="placeOrder">
+        <button class="btn-outline" type="button" @click="step = 2">Kembali</button>
+        <button class="btn" :disabled="submitting" type="button" @click="placeOrder">
           {{ submitting ? 'Memproses...' : 'Buat Pesanan' }}
         </button>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.checkout {
-  max-width: 600px;
+.checkout-page {
+  max-width: 760px;
   margin: 0 auto;
+  padding-top: 34px;
+}
+
+.page-head {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-family: var(--sf-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sf-accent-strong);
 }
 
 h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+
+.page-head p {
+  color: var(--sf-ink-soft);
 }
 
 .steps {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.85rem;
-  color: #aaa;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.steps span {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--sf-line-strong);
+  color: var(--sf-ink-muted);
+  font-size: 12px;
+  font-family: var(--sf-mono);
 }
 
 .steps span.active {
-  color: #e53e3e;
-  font-weight: 700;
+  color: var(--sf-accent-strong);
+  border-color: var(--sf-accent);
+  background: var(--sf-accent-wash);
 }
 
 .steps span.done {
-  color: #22c55e;
+  color: #2f6d42;
+  border-color: #b9ddc3;
+  background: #eef8f0;
 }
 
 .error {
-  background: #fff5f5;
-  border: 1px solid #e53e3e;
-  color: #e53e3e;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
+  background: #fff4ef;
+  border: 1px solid var(--sf-accent-soft);
+  color: var(--sf-accent-strong);
+  padding: 14px 16px;
+  border-radius: 18px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line);
+  border-radius: 24px;
 }
 
 .form {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 1.5rem;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 7px;
 }
 
-.field label {
-  font-size: 0.85rem;
-  font-weight: 600;
+.field label,
+.section-label {
+  font-size: 12px;
+  font-family: var(--sf-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sf-ink-soft);
 }
 
 .field input,
 .field textarea,
 .field select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d1d1;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-family: inherit;
+  padding: 13px 15px;
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 18px;
+  font-size: 14px;
+  background: #fffdf9;
+  color: var(--sf-ink);
 }
 
-.section-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--sf-ink);
 }
 
 .empty {
-  color: #888;
+  color: var(--sf-ink-soft);
   text-align: center;
-  padding: 1rem;
+  padding: 12px;
 }
 
 .shipping-opt {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d1d1;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--sf-line-strong);
   cursor: pointer;
-  font-size: 0.9rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.shipping-opt + .shipping-opt {
+  margin-top: 10px;
 }
 
 .shipping-opt.active {
-  border-color: #e53e3e;
-  background: #fff5f5;
+  border-color: var(--sf-accent);
+  background: var(--sf-accent-wash);
 }
 
 .etd {
-  color: #888;
-  font-size: 0.8rem;
+  color: var(--sf-ink-muted);
+  font-size: 12px;
+}
+
+.summary-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--sf-ink-soft);
+}
+
+.sum-row.total {
+  padding-top: 12px;
+  border-top: 1px solid var(--sf-line);
+  color: var(--sf-ink);
+  font-weight: 700;
 }
 
 .btn-row {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.btn,
+.btn-outline {
+  border-radius: 999px;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .btn {
-  flex: 1;
-  padding: 0.75rem;
-  background: #e53e3e;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
+  border: 1px solid var(--sf-accent);
+  background: var(--sf-accent);
+  color: var(--sf-accent-contrast);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--sf-accent-strong);
+  border-color: var(--sf-accent-strong);
 }
 
 .btn:disabled {
@@ -341,33 +419,18 @@ h1 {
 }
 
 .btn-outline {
-  flex: 1;
-  padding: 0.75rem;
-  background: #fff;
-  color: #555;
-  border: 1px solid #d1d1d1;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
+  border: 1px solid var(--sf-line-strong);
+  background: transparent;
+  color: var(--sf-ink);
 }
 
-.summary-rows {
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  overflow: hidden;
+.btn-outline:hover {
+  border-color: var(--sf-ink);
 }
 
-.sum-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.6rem 0.75rem;
-  font-size: 0.9rem;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.sum-row.total {
-  font-weight: 700;
-  color: #e53e3e;
-  border-bottom: none;
+@media (max-width: 640px) {
+  .btn-row {
+    flex-direction: column;
+  }
 }
 </style>

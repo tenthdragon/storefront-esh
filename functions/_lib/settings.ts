@@ -1,9 +1,11 @@
 import type {
   StoreItemType,
   StorefrontBranding,
+  StorefrontHero,
   StorefrontCatalogSection,
   StorefrontEnv,
   StorefrontPublicSettings,
+  StorefrontTheme,
   StorefrontSections,
   StorefrontSettings,
   VisibilityRule,
@@ -19,11 +21,18 @@ function createDefaultSettings(): StorefrontSettings {
     branding: {
       storeName: '',
     },
+    hero: {
+      title: 'Koleksi digital pilihan untuk belajar, bertumbuh, dan membangun langkah berikutnya dengan lebih jelas.',
+      subtitle: 'Materi yang dipilih satu per satu untuk membantu Anda bergerak lebih tenang, lebih paham, dan lebih siap menghadapi era baru.',
+    },
     sections: {
       catalog: {
         visible: true,
         title: 'Katalog Produk',
       },
+    },
+    theme: {
+      buttonColor: '#b85c38',
     },
   }
 }
@@ -52,14 +61,18 @@ function normalizeSettings(value: unknown): StorefrontSettings {
   }
 
   const branding = normalizeBranding(candidate.branding, defaults.branding)
+  const hero = normalizeHero(candidate.hero, defaults.hero)
   const sections = normalizeSections(candidate.sections, defaults.sections)
+  const theme = normalizeTheme(candidate.theme, defaults.theme)
 
   return {
     version: 1,
     updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : new Date(0).toISOString(),
     items,
     branding,
+    hero,
     sections,
+    theme,
   }
 }
 
@@ -86,6 +99,18 @@ function normalizeCatalogSection(value: unknown, defaults: StorefrontCatalogSect
   }
 }
 
+function normalizeHero(value: unknown, defaults: StorefrontHero): StorefrontHero {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontHero>
+  return {
+    title: typeof candidate.title === 'string' ? candidate.title : defaults.title,
+    subtitle: typeof candidate.subtitle === 'string' ? candidate.subtitle : defaults.subtitle,
+  }
+}
+
 function normalizeSections(value: unknown, defaults: StorefrontSections): StorefrontSections {
   if (!value || typeof value !== 'object') {
     return defaults
@@ -99,6 +124,34 @@ function normalizeSections(value: unknown, defaults: StorefrontSections): Storef
 
 function sanitizeLabel(value: string) {
   return value.trim()
+}
+
+function normalizeHexColor(value: string, fallback: string) {
+  const trimmed = value.trim()
+  const match = trimmed.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+  if (!match) {
+    return fallback
+  }
+
+  const hex = match[1]
+  if (hex.length === 3) {
+    return `#${hex.split('').map((char) => char + char).join('').toLowerCase()}`
+  }
+
+  return `#${hex.toLowerCase()}`
+}
+
+function normalizeTheme(value: unknown, defaults: StorefrontTheme): StorefrontTheme {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontTheme>
+  return {
+    buttonColor: typeof candidate.buttonColor === 'string'
+      ? normalizeHexColor(candidate.buttonColor, defaults.buttonColor)
+      : defaults.buttonColor,
+  }
 }
 
 export function getItemKey(entityType: StoreItemType, id: number) {
@@ -133,7 +186,9 @@ export async function saveSettings(env: StorefrontEnv, settings: StorefrontSetti
 export function toPublicSettings(settings: StorefrontSettings): StorefrontPublicSettings {
   return {
     branding: settings.branding,
+    hero: settings.hero,
     sections: settings.sections,
+    theme: settings.theme,
   }
 }
 
@@ -176,8 +231,11 @@ export async function setPresentation(
   env: StorefrontEnv,
   values: {
     storeName?: string
+    heroTitle?: string
+    heroSubtitle?: string
     catalogVisible?: boolean
     catalogTitle?: string
+    buttonColor?: string
   },
 ) {
   const settings = await loadSettings(env)
@@ -187,16 +245,30 @@ export async function setPresentation(
     branding: {
       ...settings.branding,
     },
+    hero: {
+      ...settings.hero,
+    },
     sections: {
       ...settings.sections,
       catalog: {
         ...settings.sections.catalog,
       },
     },
+    theme: {
+      ...settings.theme,
+    },
   }
 
   if (typeof values.storeName === 'string') {
     nextSettings.branding.storeName = sanitizeLabel(values.storeName)
+  }
+
+  if (typeof values.heroTitle === 'string') {
+    nextSettings.hero.title = sanitizeLabel(values.heroTitle)
+  }
+
+  if (typeof values.heroSubtitle === 'string') {
+    nextSettings.hero.subtitle = sanitizeLabel(values.heroSubtitle)
   }
 
   if (typeof values.catalogVisible === 'boolean') {
@@ -205,6 +277,10 @@ export async function setPresentation(
 
   if (typeof values.catalogTitle === 'string') {
     nextSettings.sections.catalog.title = sanitizeLabel(values.catalogTitle)
+  }
+
+  if (typeof values.buttonColor === 'string') {
+    nextSettings.theme.buttonColor = normalizeHexColor(values.buttonColor, settings.theme.buttonColor)
   }
 
   await saveSettings(env, nextSettings)

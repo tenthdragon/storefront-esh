@@ -15,6 +15,11 @@ export interface StorefrontBranding {
   storeName: string
 }
 
+export interface StorefrontHero {
+  title: string
+  subtitle: string
+}
+
 export interface StorefrontCatalogSection {
   visible: boolean
   title: string
@@ -24,17 +29,25 @@ export interface StorefrontSections {
   catalog: StorefrontCatalogSection
 }
 
+export interface StorefrontTheme {
+  buttonColor: string
+}
+
 export interface StorefrontSettings {
   version: 1
   updatedAt: string
   items: Record<string, VisibilityRule>
   branding: StorefrontBranding
+  hero: StorefrontHero
   sections: StorefrontSections
+  theme: StorefrontTheme
 }
 
 export interface StorefrontPublicSettings {
   branding: StorefrontBranding
+  hero: StorefrontHero
   sections: StorefrontSections
+  theme: StorefrontTheme
 }
 
 export interface CatalogItem {

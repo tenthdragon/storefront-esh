@@ -53,11 +53,18 @@ export async function updateStorefrontPresentation(payload: {
   branding?: {
     storeName?: string
   }
+  hero?: {
+    title?: string
+    subtitle?: string
+  }
   sections?: {
     catalog?: {
       visible?: boolean
       title?: string
     }
+  }
+  theme?: {
+    buttonColor?: string
   }
 }) {
   const res = await adminApiFetch('/settings', {

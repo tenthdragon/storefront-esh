@@ -38,30 +38,51 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
 
   const body = await context.request.json().catch(() => null) as {
     branding?: { storeName?: unknown }
+    hero?: {
+      title?: unknown
+      subtitle?: unknown
+    }
     sections?: {
       catalog?: {
         visible?: unknown
         title?: unknown
       }
     }
+    theme?: {
+      buttonColor?: unknown
+    }
   } | null
 
   const hasStoreName = !!body?.branding && Object.prototype.hasOwnProperty.call(body.branding, 'storeName')
+  const hasHeroTitle = !!body?.hero && Object.prototype.hasOwnProperty.call(body.hero, 'title')
+  const hasHeroSubtitle = !!body?.hero && Object.prototype.hasOwnProperty.call(body.hero, 'subtitle')
   const hasCatalogVisible = !!body?.sections?.catalog
     && Object.prototype.hasOwnProperty.call(body.sections.catalog, 'visible')
   const hasCatalogTitle = !!body?.sections?.catalog
     && Object.prototype.hasOwnProperty.call(body.sections.catalog, 'title')
+  const hasButtonColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'buttonColor')
 
-  if (!hasStoreName && !hasCatalogVisible && !hasCatalogTitle) {
+  if (!hasStoreName && !hasHeroTitle && !hasHeroSubtitle && !hasCatalogVisible && !hasCatalogTitle && !hasButtonColor) {
     return errorJson(400, 'Payload pengaturan tampilan tidak valid.')
   }
 
   const storeName = body?.branding?.storeName
+  const heroTitle = body?.hero?.title
+  const heroSubtitle = body?.hero?.subtitle
   const catalogVisible = body?.sections?.catalog?.visible
   const catalogTitle = body?.sections?.catalog?.title
+  const buttonColor = body?.theme?.buttonColor
 
   if (hasStoreName && typeof storeName !== 'string') {
     return errorJson(400, 'Nama toko harus berupa teks.')
+  }
+
+  if (hasHeroTitle && typeof heroTitle !== 'string') {
+    return errorJson(400, 'Hero title harus berupa teks.')
+  }
+
+  if (hasHeroSubtitle && typeof heroSubtitle !== 'string') {
+    return errorJson(400, 'Hero subtitle harus berupa teks.')
   }
 
   if (hasCatalogVisible && typeof catalogVisible !== 'boolean') {
@@ -72,11 +93,25 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     return errorJson(400, 'Judul katalog harus berupa teks.')
   }
 
+  if (hasButtonColor) {
+    if (typeof buttonColor !== 'string') {
+      return errorJson(400, 'Warna tombol harus berupa teks.')
+    }
+
+    const isHexColor = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(buttonColor.trim())
+    if (!isHexColor) {
+      return errorJson(400, 'Warna tombol harus berupa kode hex seperti #B85C38.')
+    }
+  }
+
   try {
     return json(await setPresentation(context.env, {
       storeName: typeof storeName === 'string' ? storeName : undefined,
+      heroTitle: typeof heroTitle === 'string' ? heroTitle : undefined,
+      heroSubtitle: typeof heroSubtitle === 'string' ? heroSubtitle : undefined,
       catalogVisible: typeof catalogVisible === 'boolean' ? catalogVisible : undefined,
       catalogTitle: typeof catalogTitle === 'string' ? catalogTitle : undefined,
+      buttonColor: typeof buttonColor === 'string' ? buttonColor : undefined,
     }))
   } catch (error) {
     return errorJson(500, (error as Error).message)

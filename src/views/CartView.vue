@@ -20,34 +20,43 @@ function formatPrice(price: number) {
 </script>
 
 <template>
-  <div>
-    <h1>Keranjang Belanja</h1>
+  <section class="cart-page">
+    <header class="page-head">
+      <span class="eyebrow">Keranjang</span>
+      <h1>Ringkasan belanja Anda</h1>
+      <p>Periksa kembali item yang ingin Anda lanjutkan ke checkout.</p>
+    </header>
 
-    <div v-if="cart.loading" class="loading">Memuat...</div>
-    <div v-else-if="!cart.cart?.items.length" class="empty">
-      <p>Keranjang kosong.</p>
+    <div v-if="cart.loading" class="state-block">Memuat...</div>
+
+    <div v-else-if="!cart.cart?.items.length" class="empty-panel">
+      <p>Keranjang masih kosong.</p>
       <RouterLink to="/" class="btn-shop">Mulai Belanja</RouterLink>
     </div>
 
     <div v-else class="cart-layout">
-      <div class="items">
-        <div v-for="item in cart.cart!.items" :key="item.id" class="cart-item">
+      <div class="items-panel">
+        <article v-for="item in cart.cart!.items" :key="item.id" class="cart-item">
           <img v-if="item.image" :src="item.image" :alt="item.name" class="item-img" />
-          <div v-else class="no-img" />
+          <div v-else class="no-img">{{ item.name.charAt(0) }}</div>
+
           <div class="item-info">
             <p class="item-name">{{ item.name }}</p>
             <p class="item-price">{{ formatPrice(item.price) }}</p>
           </div>
+
           <div class="qty-ctrl">
             <button @click="item.quantity > 1 ? cart.updateItem(item.id, item.quantity - 1) : cart.removeItem(item.id)">-</button>
             <span>{{ item.quantity }}</span>
             <button @click="cart.updateItem(item.id, item.quantity + 1)">+</button>
           </div>
+
           <button class="remove" @click="cart.removeItem(item.id)">Hapus</button>
-        </div>
+        </article>
       </div>
 
-      <div class="summary-box">
+      <aside class="summary-box">
+        <span class="eyebrow">Total</span>
         <h2>Ringkasan</h2>
         <div class="sum-row">
           <span>Subtotal ({{ cart.itemCount }} item)</span>
@@ -56,149 +65,227 @@ function formatPrice(price: number) {
         <button class="btn-checkout" @click="router.push('/checkout')">
           Lanjut ke Checkout
         </button>
-      </div>
+      </aside>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped>
-h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+.cart-page {
+  padding-top: 34px;
 }
 
-.loading,
-.empty {
-  text-align: center;
-  padding: 4rem;
-  color: #888;
+.page-head {
+  margin-bottom: 28px;
 }
 
-.btn-shop {
+.eyebrow {
   display: inline-block;
-  margin-top: 1rem;
-  padding: 0.6rem 1.5rem;
-  background: #e53e3e;
-  color: #fff;
-  border-radius: 6px;
+  margin-bottom: 10px;
+  font-family: var(--sf-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sf-accent-strong);
+}
+
+h1 {
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+
+.page-head p {
+  color: var(--sf-ink-soft);
+}
+
+.state-block {
+  text-align: center;
+  color: var(--sf-ink-soft);
+  padding: 64px 16px;
+}
+
+.empty-panel {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 52px 24px;
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line);
+  border-radius: 24px;
+  color: var(--sf-ink-soft);
+}
+
+.btn-shop,
+.btn-checkout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--sf-accent);
+  background: var(--sf-accent);
+  color: var(--sf-accent-contrast);
+  padding: 14px 20px;
   text-decoration: none;
   font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-shop:hover,
+.btn-checkout:hover {
+  transform: translateY(-1px);
+  background: var(--sf-accent-strong);
+  border-color: var(--sf-accent-strong);
 }
 
 .cart-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
   align-items: start;
 }
 
-@media (max-width: 768px) {
-  .cart-layout {
-    grid-template-columns: 1fr;
-  }
+.items-panel,
+.summary-box {
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line);
+  border-radius: 24px;
+}
+
+.items-panel {
+  padding: 18px;
 }
 
 .cart-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 1rem;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 0.75rem;
+  gap: 18px;
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.cart-item + .cart-item {
+  border-top: 1px solid var(--sf-line);
+}
+
+.item-img,
+.no-img {
+  width: 84px;
+  height: 84px;
+  border-radius: 16px;
 }
 
 .item-img {
-  width: 72px;
-  height: 72px;
   object-fit: cover;
-  border-radius: 6px;
-  flex-shrink: 0;
 }
 
 .no-img {
-  width: 72px;
-  height: 72px;
-  background: #f0f0f0;
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
-.item-info {
-  flex: 1;
-}
-
-.item-name {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.item-price {
-  font-size: 0.85rem;
-  color: #e53e3e;
+  display: grid;
+  place-items: center;
+  background: var(--sf-accent-soft);
+  color: var(--sf-accent-strong);
+  font-size: 28px;
   font-weight: 600;
 }
 
+.item-info {
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+.item-price {
+  color: var(--sf-accent-strong);
+  font-weight: 700;
+}
+
 .qty-ctrl {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--sf-line-strong);
 }
 
 .qty-ctrl button {
-  width: 28px;
-  height: 28px;
-  border: 1px solid #d1d1d1;
-  border-radius: 4px;
-  background: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--sf-line-strong);
+  background: transparent;
   cursor: pointer;
+}
+
+.qty-ctrl span {
+  min-width: 18px;
+  text-align: center;
+  font-family: var(--sf-mono);
+  font-size: 12px;
 }
 
 .remove {
-  background: none;
+  background: transparent;
   border: none;
-  color: #888;
-  font-size: 0.8rem;
+  color: var(--sf-ink-muted);
   cursor: pointer;
+  font-size: 13px;
 }
 
 .remove:hover {
-  color: #e53e3e;
+  color: var(--sf-accent-strong);
 }
 
 .summary-box {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 1.5rem;
   position: sticky;
-  top: 80px;
+  top: 96px;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
 }
 
 .summary-box h2 {
-  font-size: 1rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
+  font-size: 24px;
+  letter-spacing: -0.03em;
 }
 
 .sum-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+  gap: 10px;
+  color: var(--sf-ink-soft);
 }
 
-.btn-checkout {
-  width: 100%;
-  padding: 0.75rem;
-  background: #e53e3e;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
+@media (max-width: 920px) {
+  .cart-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .cart-item {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .qty-ctrl,
+  .remove {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .item-img,
+  .no-img {
+    width: 72px;
+    height: 72px;
+  }
 }
 </style>

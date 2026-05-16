@@ -53,6 +53,9 @@ const originalPrice = computed(() => {
   return selectedVariant.value?.original_price
 })
 
+const currentName = computed(() => isBundle.value ? bundle.value?.name : product.value?.name)
+const currentDescription = computed(() => isBundle.value ? bundle.value?.description : product.value?.description)
+
 function formatPrice(price: number) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -87,20 +90,23 @@ async function addToCart() {
 </script>
 
 <template>
-  <div>
-    <RouterLink to="/" class="back">&larr; Kembali</RouterLink>
+  <section class="product-view">
+    <RouterLink to="/" class="back-link">&larr; Kembali ke katalog</RouterLink>
 
-    <div v-if="loading" class="loading">Memuat...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
+    <div v-if="loading" class="state-block">Memuat...</div>
+    <div v-else-if="error" class="state-error">{{ error }}</div>
 
     <div v-else class="detail">
-      <div class="image-col">
-        <img v-if="currentImage" :src="currentImage" :alt="product?.name ?? bundle?.name" class="main-image" />
-        <div v-else class="no-image">Tidak ada gambar</div>
+      <div class="media-panel">
+        <img v-if="currentImage" :src="currentImage" :alt="currentName" class="main-image" />
+        <div v-else class="fallback-image">
+          <span>{{ currentName }}</span>
+        </div>
       </div>
 
-      <div class="info-col">
-        <h1>{{ isBundle ? bundle?.name : product?.name }}</h1>
+      <div class="content-panel">
+        <span class="eyebrow">{{ isBundle ? 'Bundle' : 'Produk Digital' }}</span>
+        <h1>{{ currentName }}</h1>
 
         <div class="price-wrap">
           <span v-if="originalPrice && originalPrice > currentPrice" class="original">
@@ -109,8 +115,8 @@ async function addToCart() {
           <span class="price">{{ formatPrice(currentPrice) }}</span>
         </div>
 
-        <div v-if="!isBundle && product && product.variants.length > 1" class="variants">
-          <p class="label">Pilih Varian:</p>
+        <div v-if="!isBundle && product && product.variants.length > 1" class="section">
+          <p class="section-label">Pilih Varian</p>
           <div class="variant-list">
             <button
               v-for="v in product.variants"
@@ -123,8 +129,8 @@ async function addToCart() {
           </div>
         </div>
 
-        <div class="qty-row">
-          <p class="label">Jumlah:</p>
+        <div class="section">
+          <p class="section-label">Jumlah</p>
           <div class="qty-ctrl">
             <button @click="quantity = Math.max(1, quantity - 1)">-</button>
             <span>{{ quantity }}</span>
@@ -132,7 +138,7 @@ async function addToCart() {
           </div>
         </div>
 
-        <p v-if="!isBundle && !product?.variants.length" class="no-variant">
+        <p v-if="!isBundle && !product?.variants.length" class="inline-note">
           Produk ini tidak memiliki varian tersedia.
         </p>
 
@@ -145,152 +151,221 @@ async function addToCart() {
           {{ addingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang' }}
         </button>
 
-        <div
-          v-if="product?.description ?? bundle?.description"
-          class="description"
-          v-html="product?.description ?? bundle?.description"
-        />
+        <div v-if="currentDescription" class="description">
+          <p class="section-label">Deskripsi</p>
+          <div v-html="currentDescription" />
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped>
-.back {
-  display: inline-block;
-  margin-bottom: 1.5rem;
-  color: #555;
+.product-view {
+  padding-top: 34px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 22px;
   text-decoration: none;
-  font-size: 0.9rem;
+  color: var(--sf-ink-soft);
+  font-size: 13px;
 }
 
-.loading,
-.error {
+.state-block {
   text-align: center;
-  padding: 4rem;
-  color: #888;
+  color: var(--sf-ink-soft);
+  padding: 64px 16px;
 }
 
-.error {
-  color: #e53e3e;
+.state-error {
+  background: #fff4ef;
+  border: 1px solid var(--sf-accent-soft);
+  color: var(--sf-accent-strong);
+  padding: 18px 20px;
+  border-radius: 20px;
 }
 
 .detail {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 36px;
   align-items: start;
 }
 
-@media (max-width: 640px) {
-  .detail {
-    grid-template-columns: 1fr;
-  }
+.media-panel,
+.content-panel {
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line);
+  border-radius: 26px;
+  overflow: hidden;
 }
 
-.image-col .main-image {
+.media-panel {
+  padding: 20px;
+}
+
+.main-image,
+.fallback-image {
   width: 100%;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.no-image {
   aspect-ratio: 1;
-  background: #f0f0f0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #aaa;
+  border-radius: 20px;
 }
 
-.info-col {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.main-image {
+  object-fit: cover;
+  background: var(--sf-accent-soft);
+}
+
+.fallback-image {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--sf-accent-soft) 0%, var(--sf-accent-wash) 100%);
+  color: var(--sf-ink);
+  padding: 24px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.content-panel {
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sf-accent-strong);
+  font-family: var(--sf-mono);
 }
 
 h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+  font-weight: 500;
 }
 
 .price-wrap {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .original {
-  font-size: 0.9rem;
-  color: #aaa;
+  color: var(--sf-ink-muted);
   text-decoration: line-through;
+  font-size: 15px;
 }
 
 .price {
-  font-size: 1.5rem;
+  font-size: 28px;
   font-weight: 700;
-  color: #e53e3e;
+  color: var(--sf-accent-strong);
+  letter-spacing: -0.04em;
 }
 
-.label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+.section {
+  display: grid;
+  gap: 12px;
+}
+
+.section-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--sf-ink-soft);
+  font-family: var(--sf-mono);
 }
 
 .variant-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 10px;
+}
+
+.variant-btn,
+.qty-ctrl button {
+  border-radius: 999px;
+  border: 1px solid var(--sf-line-strong);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .variant-btn {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid #d1d1d1;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 0.85rem;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--sf-ink-soft);
 }
 
-.variant-btn.active {
-  border-color: #e53e3e;
-  background: #fff5f5;
-  color: #e53e3e;
-}
-
-.qty-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.variant-btn.active,
+.variant-btn:hover {
+  border-color: var(--sf-accent);
+  color: var(--sf-accent-strong);
+  background: var(--sf-accent-wash);
 }
 
 .qty-ctrl {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--sf-line);
+  width: fit-content;
+  background: #fffdf9;
 }
 
 .qty-ctrl button {
-  width: 32px;
-  height: 32px;
-  border: 1px solid #d1d1d1;
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 1rem;
+  width: 34px;
+  height: 34px;
+  color: var(--sf-ink);
+}
+
+.qty-ctrl button:hover {
+  border-color: var(--sf-ink);
+}
+
+.qty-ctrl span {
+  min-width: 18px;
+  text-align: center;
+  font-family: var(--sf-mono);
+}
+
+.inline-note {
+  color: var(--sf-ink-soft);
+  font-size: 14px;
 }
 
 .btn-cart {
-  padding: 0.75rem;
-  background: #e53e3e;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  padding: 14px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--sf-accent);
+  background: var(--sf-accent);
+  color: var(--sf-accent-contrast);
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  width: fit-content;
+}
+
+.btn-cart:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--sf-accent-strong);
+  border-color: var(--sf-accent-strong);
 }
 
 .btn-cart:disabled {
@@ -299,10 +374,19 @@ h1 {
 }
 
 .description {
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: #444;
-  border-top: 1px solid #e5e5e5;
-  padding-top: 1rem;
+  padding-top: 22px;
+  border-top: 1px solid var(--sf-line);
+  color: var(--sf-ink-soft);
+  line-height: 1.75;
+}
+
+.description :deep(p) + :deep(p) {
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .detail {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
