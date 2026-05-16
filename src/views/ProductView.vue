@@ -116,6 +116,10 @@ function formatPrice(price: number) {
   }).format(price)
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
 async function addToCart() {
   addingToCart.value = true
   try {
@@ -146,6 +150,7 @@ async function addToCart() {
         })
       }
     }
+    await sleep(450)
     router.push('/cart')
   } catch (e) {
     error.value = (e as Error).message

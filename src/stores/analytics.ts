@@ -19,6 +19,13 @@ declare global {
     _fbq?: (...args: unknown[]) => void
     __STOREFRONT_META_PIXEL_IDS__?: Record<string, true>
     __STOREFRONT_META_PAGEVIEW_PIXEL_ID__?: string
+    __STOREFRONT_META_DEBUG_EVENTS__?: Array<{
+      eventName: MetaBrowserEventName
+      eventId?: string
+      pixelId?: string
+      parameters: Record<string, unknown>
+      timestamp: string
+    }>
   }
 }
 
@@ -58,6 +65,7 @@ const META_SCRIPT_ID = 'storefront-meta-pixel'
 const META_SENT_EVENTS_KEY = 'sf.meta.sent-events'
 const META_PENDING_PURCHASE_PREFIX = 'sf.meta.pending-purchase:'
 const META_SESSION_EVENT_PREFIX = 'sf.meta.session-event:'
+const META_DEBUG_EVENTS_KEY = 'sf.meta.debug-events'
 const META_FBC_KEY = '_fbc'
 const META_FBP_KEY = '_fbp'
 
@@ -323,6 +331,12 @@ function dispatchMetaBrowserEvent(
   if (!win?.fbq) return false
 
   const eventOptions = options.eventId ? { eventID: options.eventId } : undefined
+  recordMetaBrowserDebugEvent({
+    eventName,
+    eventId: options.eventId,
+    pixelId: options.pixelId?.trim() || undefined,
+    parameters,
+  })
 
   try {
     win.fbq('track', eventName, parameters, eventOptions)
@@ -474,6 +488,30 @@ function clearPendingPurchase(secretSlug: string) {
   } catch {
     // Ignore storage failures.
   }
+}
+
+function recordMetaBrowserDebugEvent(input: {
+  eventName: MetaBrowserEventName
+  eventId?: string
+  pixelId?: string
+  parameters: Record<string, unknown>
+}) {
+  const nextEntry = {
+    ...input,
+    timestamp: new Date().toISOString(),
+  }
+
+  const win = getBrowserWindow()
+  if (win) {
+    const list = win.__STOREFRONT_META_DEBUG_EVENTS__ ?? []
+    list.push(nextEntry)
+    win.__STOREFRONT_META_DEBUG_EVENTS__ = list.slice(-20)
+  }
+
+  const storage = getSessionStorage()
+  const current = readJsonStorage<typeof nextEntry[]>(storage, META_DEBUG_EVENTS_KEY, [])
+  current.push(nextEntry)
+  writeJsonStorage(storage, META_DEBUG_EVENTS_KEY, current.slice(-20))
 }
 
 function isPaidStatus(status?: string | null) {
