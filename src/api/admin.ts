@@ -49,7 +49,7 @@ export async function setItemVisibility(
   return parseResponse<StorefrontSettings>(res)
 }
 
-export async function updateStorefrontPresentation(payload: {
+export async function updateStorefrontSettings(payload: {
   branding?: {
     storeName?: string
   }
@@ -66,6 +66,17 @@ export async function updateStorefrontPresentation(payload: {
   theme?: {
     buttonColor?: string
     priceLabelColor?: string
+  }
+  analytics?: {
+    meta?: {
+      enabled?: boolean
+      pixelId?: string
+      trackViewContent?: boolean
+      trackAddToCart?: boolean
+      trackInitiateCheckout?: boolean
+      trackPurchase?: boolean
+      purchaseTrigger?: 'checkout_success' | 'order_paid'
+    }
   }
 }) {
   const res = await adminApiFetch('/settings', {

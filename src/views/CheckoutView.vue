@@ -2,14 +2,21 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import { useAnalyticsStore } from '@/stores/analytics'
 import { getShippingOptions, getCheckoutSummary, submitCheckout } from '@/api/checkout'
 import LocationPicker from '@/components/LocationPicker.vue'
 import type { Location, ShippingOption, Summary } from '@/types'
 
 const router = useRouter()
 const cart = useCartStore()
+const analytics = useAnalyticsStore()
 
-onMounted(() => cart.fetchCart())
+onMounted(async () => {
+  await cart.fetchCart()
+  if (cart.cart?.items.length) {
+    void analytics.trackMetaInitiateCheckout(cart.cart.items, cart.subtotal)
+  }
+})
 
 const step = ref(1)
 const submitting = ref(false)
@@ -83,6 +90,7 @@ async function placeOrder() {
   error.value = null
   submitting.value = true
   try {
+    const cartItemsSnapshot = cart.cart?.items ? JSON.parse(JSON.stringify(cart.cart.items)) : []
     const order = await submitCheckout({
       customer_name: form.value.customer_name,
       customer_email: form.value.customer_email,
@@ -96,6 +104,11 @@ async function placeOrder() {
       shipping_courier: selectedShipping.value.courier,
       shipping_service: selectedShipping.value.service,
       payment_method: form.value.payment_method,
+    })
+    void analytics.registerCheckoutPurchase(order, cartItemsSnapshot, {
+      name: form.value.customer_name,
+      email: form.value.customer_email,
+      phone: form.value.customer_phone,
     })
     router.push(`/orders/${order.secret_slug}`)
   } catch (e) {

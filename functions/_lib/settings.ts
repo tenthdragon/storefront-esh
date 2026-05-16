@@ -1,9 +1,12 @@
 import type {
+  MetaPurchaseTrigger,
+  StorefrontAnalyticsSettings,
   StoreItemType,
   StorefrontBranding,
   StorefrontHero,
   StorefrontCatalogSection,
   StorefrontEnv,
+  StorefrontMetaAnalyticsSettings,
   StorefrontPublicSettings,
   StorefrontTheme,
   StorefrontSections,
@@ -35,6 +38,17 @@ function createDefaultSettings(): StorefrontSettings {
       buttonColor: '#b85c38',
       priceLabelColor: '#1f1b16',
     },
+    analytics: {
+      meta: {
+        enabled: false,
+        pixelId: '',
+        trackViewContent: true,
+        trackAddToCart: true,
+        trackInitiateCheckout: true,
+        trackPurchase: true,
+        purchaseTrigger: 'checkout_success',
+      },
+    },
   }
 }
 
@@ -65,6 +79,7 @@ function normalizeSettings(value: unknown): StorefrontSettings {
   const hero = normalizeHero(candidate.hero, defaults.hero)
   const sections = normalizeSections(candidate.sections, defaults.sections)
   const theme = normalizeTheme(candidate.theme, defaults.theme)
+  const analytics = normalizeAnalytics(candidate.analytics, defaults.analytics)
 
   return {
     version: 1,
@@ -74,6 +89,7 @@ function normalizeSettings(value: unknown): StorefrontSettings {
     hero,
     sections,
     theme,
+    analytics,
   }
 }
 
@@ -158,6 +174,57 @@ function normalizeTheme(value: unknown, defaults: StorefrontTheme): StorefrontTh
   }
 }
 
+function normalizePurchaseTrigger(
+  value: unknown,
+  fallback: MetaPurchaseTrigger,
+): MetaPurchaseTrigger {
+  return value === 'order_paid' || value === 'checkout_success'
+    ? value
+    : fallback
+}
+
+function normalizeMetaAnalytics(
+  value: unknown,
+  defaults: StorefrontMetaAnalyticsSettings,
+): StorefrontMetaAnalyticsSettings {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontMetaAnalyticsSettings>
+  return {
+    enabled: typeof candidate.enabled === 'boolean' ? candidate.enabled : defaults.enabled,
+    pixelId: typeof candidate.pixelId === 'string' ? sanitizeLabel(candidate.pixelId) : defaults.pixelId,
+    trackViewContent: typeof candidate.trackViewContent === 'boolean'
+      ? candidate.trackViewContent
+      : defaults.trackViewContent,
+    trackAddToCart: typeof candidate.trackAddToCart === 'boolean'
+      ? candidate.trackAddToCart
+      : defaults.trackAddToCart,
+    trackInitiateCheckout: typeof candidate.trackInitiateCheckout === 'boolean'
+      ? candidate.trackInitiateCheckout
+      : defaults.trackInitiateCheckout,
+    trackPurchase: typeof candidate.trackPurchase === 'boolean'
+      ? candidate.trackPurchase
+      : defaults.trackPurchase,
+    purchaseTrigger: normalizePurchaseTrigger(candidate.purchaseTrigger, defaults.purchaseTrigger),
+  }
+}
+
+function normalizeAnalytics(
+  value: unknown,
+  defaults: StorefrontAnalyticsSettings,
+): StorefrontAnalyticsSettings {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontAnalyticsSettings>
+  return {
+    meta: normalizeMetaAnalytics(candidate.meta, defaults.meta),
+  }
+}
+
 export function getItemKey(entityType: StoreItemType, id: number) {
   return `${entityType}:${id}`
 }
@@ -193,6 +260,7 @@ export function toPublicSettings(settings: StorefrontSettings): StorefrontPublic
     hero: settings.hero,
     sections: settings.sections,
     theme: settings.theme,
+    analytics: settings.analytics,
   }
 }
 
@@ -241,6 +309,13 @@ export async function setPresentation(
     catalogTitle?: string
     buttonColor?: string
     priceLabelColor?: string
+    metaEnabled?: boolean
+    metaPixelId?: string
+    metaTrackViewContent?: boolean
+    metaTrackAddToCart?: boolean
+    metaTrackInitiateCheckout?: boolean
+    metaTrackPurchase?: boolean
+    metaPurchaseTrigger?: MetaPurchaseTrigger
   },
 ) {
   const settings = await loadSettings(env)
@@ -261,6 +336,12 @@ export async function setPresentation(
     },
     theme: {
       ...settings.theme,
+    },
+    analytics: {
+      ...settings.analytics,
+      meta: {
+        ...settings.analytics.meta,
+      },
     },
   }
 
@@ -290,6 +371,37 @@ export async function setPresentation(
 
   if (typeof values.priceLabelColor === 'string') {
     nextSettings.theme.priceLabelColor = normalizeHexColor(values.priceLabelColor, settings.theme.priceLabelColor)
+  }
+
+  if (typeof values.metaEnabled === 'boolean') {
+    nextSettings.analytics.meta.enabled = values.metaEnabled
+  }
+
+  if (typeof values.metaPixelId === 'string') {
+    nextSettings.analytics.meta.pixelId = sanitizeLabel(values.metaPixelId)
+  }
+
+  if (typeof values.metaTrackViewContent === 'boolean') {
+    nextSettings.analytics.meta.trackViewContent = values.metaTrackViewContent
+  }
+
+  if (typeof values.metaTrackAddToCart === 'boolean') {
+    nextSettings.analytics.meta.trackAddToCart = values.metaTrackAddToCart
+  }
+
+  if (typeof values.metaTrackInitiateCheckout === 'boolean') {
+    nextSettings.analytics.meta.trackInitiateCheckout = values.metaTrackInitiateCheckout
+  }
+
+  if (typeof values.metaTrackPurchase === 'boolean') {
+    nextSettings.analytics.meta.trackPurchase = values.metaTrackPurchase
+  }
+
+  if (typeof values.metaPurchaseTrigger === 'string') {
+    nextSettings.analytics.meta.purchaseTrigger = normalizePurchaseTrigger(
+      values.metaPurchaseTrigger,
+      settings.analytics.meta.purchaseTrigger,
+    )
   }
 
   await saveSettings(env, nextSettings)

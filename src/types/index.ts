@@ -37,6 +37,22 @@ export interface StorefrontTheme {
   priceLabelColor: string
 }
 
+export type MetaPurchaseTrigger = 'checkout_success' | 'order_paid'
+
+export interface StorefrontMetaAnalyticsSettings {
+  enabled: boolean
+  pixelId: string
+  trackViewContent: boolean
+  trackAddToCart: boolean
+  trackInitiateCheckout: boolean
+  trackPurchase: boolean
+  purchaseTrigger: MetaPurchaseTrigger
+}
+
+export interface StorefrontAnalyticsSettings {
+  meta: StorefrontMetaAnalyticsSettings
+}
+
 export interface StorefrontSettings {
   version: 1
   updatedAt: string
@@ -45,6 +61,7 @@ export interface StorefrontSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  analytics: StorefrontAnalyticsSettings
 }
 
 export interface StorefrontPublicSettings {
@@ -52,6 +69,7 @@ export interface StorefrontPublicSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  analytics: StorefrontAnalyticsSettings
 }
 
 export interface AdminSession {
@@ -61,11 +79,14 @@ export interface AdminSession {
 
 export interface ProductVariant {
   id: number
+  unique_id?: string
   name: string
-  price: number
+  fullname?: string
+  price: number | string
   original_price?: number
   sku?: string
   image?: string
+  images?: string[]
 }
 
 export interface Product {
@@ -85,8 +106,22 @@ export interface Bundle {
   description?: string
   rich_description?: string
   images: string[]
-  price: number
+  price: number | string
   original_price?: number
+  bundle_price_option_id?: number
+  bundle_price_option_unique_id?: string
+}
+
+export interface CartBundleLine {
+  variant_id: number
+  variant_unique_id?: string
+  variant_name: string
+  product_name: string
+  product_slug?: string
+  sku?: string | null
+  price: string | number
+  quantity: number
+  image?: string | null
 }
 
 export interface CartItem {
@@ -94,10 +129,20 @@ export interface CartItem {
   type: 'variant' | 'bundle_price_option'
   name: string
   image?: string
-  price: number
+  price: number | string
   quantity: number
   variant_id?: number
   bundle_price_option_id?: number
+  variant_unique_id?: string
+  bundle_price_option_unique_id?: string
+  variant_name?: string
+  product_name?: string
+  product_slug?: string
+  bundle_name?: string
+  bundle_price_option_name?: string
+  bundle_price_option_slug?: string
+  line_subtotal?: string | number
+  bundlelines?: CartBundleLine[]
 }
 
 export interface Cart {
@@ -139,8 +184,10 @@ export interface Order {
   id: number
   secret_slug: string
   status: string
+  payment_status?: string
   customer_name: string
   customer_email: string
+  customer_phone?: string
   items: CartItem[]
   product_price: number
   product_discount: number
@@ -150,6 +197,8 @@ export interface Order {
   payment_method: string
   payment_url?: string
   chat_message?: string
+  variants?: unknown
+  bundle_price_options?: unknown
   store: {
     payment_accounts: PaymentAccount[]
   }

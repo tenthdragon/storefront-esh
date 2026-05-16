@@ -25,6 +25,17 @@ function createDefaultSettings(): StorefrontPublicSettings {
       buttonColor: DEFAULT_BUTTON_COLOR,
       priceLabelColor: DEFAULT_PRICE_LABEL_COLOR,
     },
+    analytics: {
+      meta: {
+        enabled: false,
+        pixelId: '',
+        trackViewContent: true,
+        trackAddToCart: true,
+        trackInitiateCheckout: true,
+        trackPurchase: true,
+        purchaseTrigger: 'checkout_success',
+      },
+    },
   }
 }
 
@@ -96,6 +107,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
   const catalogHeadingTitle = computed(() => settings.value.sections.catalog.title || DEFAULT_SETTINGS.sections.catalog.title)
   const buttonColor = computed(() => normalizeHexColor(settings.value.theme.buttonColor, DEFAULT_BUTTON_COLOR))
   const priceLabelColor = computed(() => normalizeHexColor(settings.value.theme.priceLabelColor, DEFAULT_PRICE_LABEL_COLOR))
+  const metaSettings = computed(() => settings.value.analytics.meta)
   const accentStrong = computed(() => mixColors(buttonColor.value, '#1f1b16', 0.22))
   const accentSoft = computed(() => mixColors(buttonColor.value, '#faf7f2', 0.76))
   const accentWash = computed(() => withAlpha(buttonColor.value, 0.12))
@@ -137,6 +149,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
     loading,
     loaded,
     error,
+    metaSettings,
     storeName,
     heroTitle,
     heroSubtitle,

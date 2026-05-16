@@ -8,12 +8,13 @@ import {
   loginAdmin,
   logoutAdmin,
   setItemVisibility,
-  updateStorefrontPresentation,
+  updateStorefrontSettings,
 } from '@/api/admin'
-import type { Item, StorefrontSettings } from '@/types'
+import type { Item, MetaPurchaseTrigger, StorefrontSettings } from '@/types'
 
-const items = ref<Item[]>([])
-const settings = ref<StorefrontSettings>({
+type AdminSection = 'presentation' | 'catalog' | 'ads'
+
+const DEFAULT_SETTINGS: StorefrontSettings = {
   version: 1,
   updatedAt: new Date(0).toISOString(),
   items: {},
@@ -34,20 +35,39 @@ const settings = ref<StorefrontSettings>({
     buttonColor: '#b85c38',
     priceLabelColor: '#1f1b16',
   },
-})
+  analytics: {
+    meta: {
+      enabled: false,
+      pixelId: '',
+      trackViewContent: true,
+      trackAddToCart: true,
+      trackInitiateCheckout: true,
+      trackPurchase: true,
+      purchaseTrigger: 'checkout_success',
+    },
+  },
+}
+
+const settings = ref<StorefrontSettings>(DEFAULT_SETTINGS)
+const items = ref<Item[]>([])
+const count = ref(0)
 const page = ref(1)
 const search = ref('')
-const count = ref(0)
-const loading = ref(false)
+const loadingCatalog = ref(false)
+const loadingSettings = ref(false)
+const settingsLoaded = ref(false)
 const checkingSession = ref(true)
 const loggingIn = ref(false)
 const authenticated = ref(false)
 const configured = ref(true)
-const error = ref<string | null>(null)
 const authError = ref<string | null>(null)
+const catalogError = ref<string | null>(null)
+const settingsError = ref<string | null>(null)
 const password = ref('')
 const savingKey = ref<string | null>(null)
-const savingPresentation = ref(false)
+const activeSection = ref<AdminSection>('presentation')
+
+const presentationSaving = ref(false)
 const presentationError = ref<string | null>(null)
 const presentationSaved = ref<string | null>(null)
 const storeNameInput = ref('')
@@ -57,6 +77,18 @@ const showCatalogHeading = ref(true)
 const catalogHeadingInput = ref('Katalog Produk')
 const buttonColorInput = ref('#b85c38')
 const priceLabelColorInput = ref('#1f1b16')
+
+const adsSaving = ref(false)
+const adsError = ref<string | null>(null)
+const adsSaved = ref<string | null>(null)
+const metaEnabled = ref(false)
+const metaPixelIdInput = ref('')
+const metaTrackViewContent = ref(true)
+const metaTrackAddToCart = ref(true)
+const metaTrackInitiateCheckout = ref(true)
+const metaTrackPurchase = ref(true)
+const metaPurchaseTrigger = ref<MetaPurchaseTrigger>('checkout_success')
+
 const PER_PAGE = 20
 let searchTimer: ReturnType<typeof setTimeout>
 
@@ -80,11 +112,21 @@ function typeLabel(entityType: Item['entity_type']) {
   return entityType === 'product' ? 'Produk' : 'Bundle'
 }
 
+function normalizeHexColor(value: string, fallback: string) {
+  const trimmed = value.trim()
+  const match = trimmed.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+  if (!match) return fallback
+
+  const hex = match[1]
+  if (hex.length === 3) {
+    return `#${hex.split('').map((char) => char + char).join('').toLowerCase()}`
+  }
+
+  return `#${hex.toLowerCase()}`
+}
+
 function getContrastPreviewColor(hex: string) {
-  const value = hex.replace('#', '')
-  const normalized = value.length === 3
-    ? value.split('').map((char) => char + char).join('')
-    : value
+  const normalized = normalizeHexColor(hex, '#b85c38').slice(1)
   const r = Number.parseInt(normalized.slice(0, 2), 16)
   const g = Number.parseInt(normalized.slice(2, 4), 16)
   const b = Number.parseInt(normalized.slice(4, 6), 16)
@@ -92,21 +134,25 @@ function getContrastPreviewColor(hex: string) {
   return brightness > 155 ? '#1f1b16' : '#faf7f2'
 }
 
-const previewButtonColor = computed(() => {
-  const trimmed = buttonColorInput.value.trim()
-  return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)
-    ? trimmed.startsWith('#') ? trimmed : `#${trimmed}`
-    : '#b85c38'
-})
-
-const previewPriceLabelColor = computed(() => {
-  const trimmed = priceLabelColorInput.value.trim()
-  return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)
-    ? trimmed.startsWith('#') ? trimmed : `#${trimmed}`
-    : '#1f1b16'
-})
-
+const totalPages = computed(() => Math.max(1, Math.ceil(count.value / PER_PAGE)))
+const visibleCountOnPage = computed(() => items.value.filter((item) => isVisible(item)).length)
+const hiddenItemsCount = computed(() => Object.keys(settings.value.items).length)
+const previewButtonColor = computed(() => normalizeHexColor(buttonColorInput.value, '#b85c38'))
+const previewPriceLabelColor = computed(() => normalizeHexColor(priceLabelColorInput.value, '#1f1b16'))
 const previewButtonInk = computed(() => getContrastPreviewColor(previewButtonColor.value))
+const enabledMetaEvents = computed(() => {
+  let total = 0
+  if (metaTrackViewContent.value) total += 1
+  if (metaTrackAddToCart.value) total += 1
+  if (metaTrackInitiateCheckout.value) total += 1
+  if (metaTrackPurchase.value) total += 1
+  return total
+})
+const metaPurchaseTriggerLabel = computed(() =>
+  metaPurchaseTrigger.value === 'checkout_success'
+    ? 'Saat checkout berhasil'
+    : 'Saat order berstatus lunas',
+)
 
 function syncPresentationForm() {
   storeNameInput.value = settings.value.branding.storeName
@@ -118,41 +164,74 @@ function syncPresentationForm() {
   priceLabelColorInput.value = settings.value.theme.priceLabelColor
 }
 
+function syncAdsForm() {
+  metaEnabled.value = settings.value.analytics.meta.enabled
+  metaPixelIdInput.value = settings.value.analytics.meta.pixelId
+  metaTrackViewContent.value = settings.value.analytics.meta.trackViewContent
+  metaTrackAddToCart.value = settings.value.analytics.meta.trackAddToCart
+  metaTrackInitiateCheckout.value = settings.value.analytics.meta.trackInitiateCheckout
+  metaTrackPurchase.value = settings.value.analytics.meta.trackPurchase
+  metaPurchaseTrigger.value = settings.value.analytics.meta.purchaseTrigger
+}
+
 async function loadSession() {
   authError.value = null
   try {
     const session = await getAdminSession()
     authenticated.value = session.authenticated
     configured.value = session.configured
-  } catch (e) {
+  } catch (error) {
     configured.value = false
-    authError.value = (e as Error).message
+    authError.value = (error as Error).message
   } finally {
     checkingSession.value = false
+  }
+}
+
+async function loadSettings() {
+  if (!authenticated.value) return
+
+  loadingSettings.value = true
+  settingsError.value = null
+
+  try {
+    settings.value = await getStorefrontSettings()
+    syncPresentationForm()
+    syncAdsForm()
+    settingsLoaded.value = true
+  } catch (error) {
+    settingsError.value = (error as Error).message
+  } finally {
+    loadingSettings.value = false
   }
 }
 
 async function loadCatalog() {
   if (!authenticated.value) return
 
-  loading.value = true
-  error.value = null
+  loadingCatalog.value = true
+  catalogError.value = null
+
   try {
-    const [itemsData, countData, settingsData] = await Promise.all([
+    const [itemsData, countData] = await Promise.all([
       getAdminItems({ page: page.value, per_page: PER_PAGE, search: search.value || undefined }),
       getAdminItemCount(search.value || undefined),
-      getStorefrontSettings(),
     ])
 
     items.value = itemsData.data
     count.value = countData.total
-    settings.value = settingsData
-    syncPresentationForm()
-  } catch (e) {
-    error.value = (e as Error).message
+  } catch (error) {
+    catalogError.value = (error as Error).message
   } finally {
-    loading.value = false
+    loadingCatalog.value = false
   }
+}
+
+async function refreshAdminData() {
+  await Promise.all([
+    loadSettings(),
+    loadCatalog(),
+  ])
 }
 
 async function handleLogin() {
@@ -165,9 +244,9 @@ async function handleLogin() {
     configured.value = session.configured
     password.value = ''
     page.value = 1
-    await loadCatalog()
-  } catch (e) {
-    authError.value = (e as Error).message
+    await refreshAdminData()
+  } catch (error) {
+    authError.value = (error as Error).message
   } finally {
     loggingIn.value = false
   }
@@ -180,12 +259,14 @@ async function handleLogout() {
   count.value = 0
   presentationSaved.value = null
   presentationError.value = null
+  adsSaved.value = null
+  adsError.value = null
 }
 
 async function updateVisibility(item: Item, visible: boolean) {
   const key = itemKey(item)
   savingKey.value = key
-  error.value = null
+  catalogError.value = null
 
   const previousSettings = settings.value
   settings.value = {
@@ -204,21 +285,21 @@ async function updateVisibility(item: Item, visible: boolean) {
 
   try {
     settings.value = await setItemVisibility(item.entity_type, item.id, visible)
-  } catch (e) {
+  } catch (error) {
     settings.value = previousSettings
-    error.value = (e as Error).message
+    catalogError.value = (error as Error).message
   } finally {
     savingKey.value = null
   }
 }
 
 async function savePresentation() {
-  savingPresentation.value = true
+  presentationSaving.value = true
   presentationError.value = null
   presentationSaved.value = null
 
   try {
-    settings.value = await updateStorefrontPresentation({
+    settings.value = await updateStorefrontSettings({
       branding: {
         storeName: storeNameInput.value,
       },
@@ -238,26 +319,54 @@ async function savePresentation() {
       },
     })
     syncPresentationForm()
-    presentationSaved.value = 'Tampilan storefront berhasil disimpan.'
-  } catch (e) {
-    presentationError.value = (e as Error).message
+    syncAdsForm()
+    presentationSaved.value = 'Presentasi storefront berhasil disimpan.'
+  } catch (error) {
+    presentationError.value = (error as Error).message
   } finally {
-    savingPresentation.value = false
+    presentationSaving.value = false
   }
 }
 
-const totalPages = computed(() => Math.max(1, Math.ceil(count.value / PER_PAGE)))
-const visibleCountOnPage = computed(() => items.value.filter((item) => isVisible(item)).length)
+async function saveAdsSettings() {
+  adsSaving.value = true
+  adsError.value = null
+  adsSaved.value = null
+
+  try {
+    settings.value = await updateStorefrontSettings({
+      analytics: {
+        meta: {
+          enabled: metaEnabled.value,
+          pixelId: metaPixelIdInput.value,
+          trackViewContent: metaTrackViewContent.value,
+          trackAddToCart: metaTrackAddToCart.value,
+          trackInitiateCheckout: metaTrackInitiateCheckout.value,
+          trackPurchase: metaTrackPurchase.value,
+          purchaseTrigger: metaPurchaseTrigger.value,
+        },
+      },
+    })
+    syncAdsForm()
+    adsSaved.value = 'Pengaturan Meta Ads berhasil disimpan.'
+  } catch (error) {
+    adsError.value = (error as Error).message
+  } finally {
+    adsSaving.value = false
+  }
+}
 
 onMounted(async () => {
   await loadSession()
   if (authenticated.value) {
-    await loadCatalog()
+    await refreshAdminData()
   }
 })
 
 watch(page, () => {
-  void loadCatalog()
+  if (authenticated.value) {
+    void loadCatalog()
+  }
 })
 
 watch(search, () => {
@@ -268,9 +377,35 @@ watch(search, () => {
   }, 300)
 })
 
-watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, catalogHeadingInput, buttonColorInput, priceLabelColorInput], () => {
-  presentationSaved.value = null
-})
+watch(
+  [
+    storeNameInput,
+    heroTitleInput,
+    heroSubtitleInput,
+    showCatalogHeading,
+    catalogHeadingInput,
+    buttonColorInput,
+    priceLabelColorInput,
+  ],
+  () => {
+    presentationSaved.value = null
+  },
+)
+
+watch(
+  [
+    metaEnabled,
+    metaPixelIdInput,
+    metaTrackViewContent,
+    metaTrackAddToCart,
+    metaTrackInitiateCheckout,
+    metaTrackPurchase,
+    metaPurchaseTrigger,
+  ],
+  () => {
+    adsSaved.value = null
+  },
+)
 </script>
 
 <template>
@@ -278,10 +413,9 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
     <header class="page-header">
       <div>
         <p class="eyebrow">Owner Settings</p>
-        <h1>Kurasi Storefront</h1>
+        <h1>Control Center Storefront</h1>
         <p class="subcopy">
-          Pilih item mana yang tampil di storefront publik. Aturan ini tetap tersimpan walau UI storefront
-          nanti Anda ubah lagi.
+          Semua pengaturan storefront dikumpulkan di sini: presentasi, kurasi katalog, dan event tracking Meta Ads.
         </p>
       </div>
 
@@ -302,7 +436,9 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
     <div v-else-if="!authenticated" class="login-wrap">
       <form class="panel login-panel" @submit.prevent="handleLogin">
         <h2>Masuk sebagai pemilik</h2>
-        <p class="subcopy">Halaman ini hanya untuk mengatur item yang ditayangkan di storefront.</p>
+        <p class="subcopy">
+          Halaman ini hanya untuk mengatur apa yang tampil di storefront dan bagaimana event ads dikirim.
+        </p>
 
         <label class="field">
           <span>Password admin</span>
@@ -323,94 +459,150 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
     </div>
 
     <template v-else>
-      <form class="panel settings-panel" @submit.prevent="savePresentation">
-        <div class="settings-copy">
-          <p class="eyebrow">Branding & Labels</p>
-          <h2>Teks dan nuansa storefront</h2>
+      <section class="overview-grid">
+        <article class="panel stat-card">
+          <span class="stat-label">Brand</span>
+          <strong>{{ storeNameInput.trim() || 'Toko' }}</strong>
+          <p>{{ showCatalogHeading ? catalogHeadingInput.trim() || 'Katalog Produk' : 'Judul katalog disembunyikan' }}</p>
+        </article>
+
+        <article class="panel stat-card">
+          <span class="stat-label">Kurasi katalog</span>
+          <strong>{{ hiddenItemsCount }} item disembunyikan</strong>
+          <p>{{ count }} item tersedia untuk dikelola.</p>
+        </article>
+
+        <article class="panel stat-card">
+          <span class="stat-label">Meta Ads</span>
+          <strong>{{ metaEnabled ? 'Aktif' : 'Belum aktif' }}</strong>
+          <p>{{ metaEnabled ? `${enabledMetaEvents} event aktif • ${metaPurchaseTriggerLabel}` : 'Pixel dan relay event belum dinyalakan.' }}</p>
+        </article>
+      </section>
+
+      <nav class="section-nav" aria-label="Admin sections">
+        <button
+          type="button"
+          :class="['section-tab', { active: activeSection === 'presentation' }]"
+          @click="activeSection = 'presentation'"
+        >
+          Presentasi
+        </button>
+        <button
+          type="button"
+          :class="['section-tab', { active: activeSection === 'catalog' }]"
+          @click="activeSection = 'catalog'"
+        >
+          Katalog
+        </button>
+        <button
+          type="button"
+          :class="['section-tab', { active: activeSection === 'ads' }]"
+          @click="activeSection = 'ads'"
+        >
+          Ads Tracking
+        </button>
+      </nav>
+
+      <div v-if="settingsError && activeSection !== 'catalog'" class="panel error-panel">
+        <strong>Error:</strong> {{ settingsError }}
+      </div>
+
+      <div v-if="catalogError && activeSection === 'catalog'" class="panel error-panel">
+        <strong>Error:</strong> {{ catalogError }}
+      </div>
+
+      <form
+        v-if="activeSection === 'presentation'"
+        class="panel section-panel"
+        @submit.prevent="savePresentation"
+      >
+        <div class="section-copy">
+          <p class="eyebrow">Presentasi</p>
+          <h2>Branding, hero, dan label storefront</h2>
           <p class="subcopy">
-            Atur nama toko, area hero seperti referensi, judul section katalog, warna tombol utama, dan warna label harga.
+            Atur nama toko, area hero, judul section katalog, dan warna-warna utama tanpa mengubah kode UI.
           </p>
         </div>
 
-        <div class="settings-grid">
-          <label class="field">
-            <span>Nama toko</span>
-            <input
-              v-model="storeNameInput"
-              type="text"
-              placeholder="Misalnya: Army Alghifari"
-            />
-          </label>
+        <div v-if="loadingSettings && !settingsLoaded" class="inner-loading">Memuat pengaturan storefront...</div>
 
-          <label class="field field-wide">
-            <span>Hero title</span>
-            <textarea
-              v-model="heroTitleInput"
-              rows="4"
-              placeholder="Tulis judul hero utama storefront"
-            />
-          </label>
-
-          <label class="field field-wide">
-            <span>Hero subtitle</span>
-            <textarea
-              v-model="heroSubtitleInput"
-              rows="3"
-              placeholder="Tulis penjelasan singkat di bawah hero"
-            />
-          </label>
-
-          <label class="field checkbox-field">
-            <span>Tampilkan nama section katalog</span>
-            <input v-model="showCatalogHeading" type="checkbox" />
-          </label>
-
-          <label class="field">
-            <span>Nama section katalog</span>
-            <input
-              v-model="catalogHeadingInput"
-              type="text"
-              :disabled="!showCatalogHeading"
-              placeholder="Misalnya: Katalog Produk"
-            />
-          </label>
-
-          <label class="field">
-            <span>Warna tombol</span>
-            <div class="color-field">
-              <input v-model="buttonColorInput" type="color" class="color-picker" />
+        <div v-else class="split-layout">
+          <div class="form-grid">
+            <label class="field">
+              <span>Nama toko</span>
               <input
-                v-model="buttonColorInput"
+                v-model="storeNameInput"
                 type="text"
-                class="color-input"
-                placeholder="#B85C38"
+                placeholder="Misalnya: Army Alghifari"
               />
-            </div>
-          </label>
+            </label>
 
-          <label class="field">
-            <span>Warna tulisan harga</span>
-            <div class="color-field">
-              <input v-model="priceLabelColorInput" type="color" class="color-picker" />
+            <label class="field field-wide">
+              <span>Hero title</span>
+              <textarea
+                v-model="heroTitleInput"
+                rows="4"
+                placeholder="Tulis judul hero utama storefront"
+              />
+            </label>
+
+            <label class="field field-wide">
+              <span>Hero subtitle</span>
+              <textarea
+                v-model="heroSubtitleInput"
+                rows="3"
+                placeholder="Tulis penjelasan singkat di bawah hero"
+              />
+            </label>
+
+            <label class="field checkbox-inline">
+              <span>Tampilkan judul section katalog</span>
+              <input v-model="showCatalogHeading" type="checkbox" />
+            </label>
+
+            <label class="field">
+              <span>Nama section katalog</span>
               <input
-                v-model="priceLabelColorInput"
+                v-model="catalogHeadingInput"
                 type="text"
-                class="color-input"
-                placeholder="#1F1B16"
+                :disabled="!showCatalogHeading"
+                placeholder="Misalnya: Katalog Produk"
               />
-            </div>
-          </label>
+            </label>
 
-          <div class="preview-card">
+            <label class="field">
+              <span>Warna tombol utama</span>
+              <div class="color-field">
+                <input v-model="buttonColorInput" type="color" class="color-picker" />
+                <input
+                  v-model="buttonColorInput"
+                  type="text"
+                  class="color-input"
+                  placeholder="#B85C38"
+                />
+              </div>
+            </label>
+
+            <label class="field">
+              <span>Warna tulisan harga</span>
+              <div class="color-field">
+                <input v-model="priceLabelColorInput" type="color" class="color-picker" />
+                <input
+                  v-model="priceLabelColorInput"
+                  type="text"
+                  class="color-input"
+                  placeholder="#1F1B16"
+                />
+              </div>
+            </label>
+          </div>
+
+          <aside class="preview-card">
             <p class="stat-label">Preview singkat</p>
             <strong>{{ storeNameInput.trim() || 'Toko' }}</strong>
             <h3>{{ heroTitleInput.trim() || settings.hero.title }}</h3>
             <p>{{ heroSubtitleInput.trim() || settings.hero.subtitle }}</p>
-            <span>{{
-              showCatalogHeading
-                ? catalogHeadingInput.trim() || 'Katalog Produk'
-                : 'Judul katalog disembunyikan'
-            }}</span>
+            <span>{{ showCatalogHeading ? catalogHeadingInput.trim() || 'Katalog Produk' : 'Judul katalog disembunyikan' }}</span>
             <button
               type="button"
               class="preview-btn"
@@ -418,85 +610,184 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
             >
               Tombol Preview
             </button>
-            <span
-              class="preview-price-tag"
-              :style="{ color: previewPriceLabelColor }"
-            >
-              Rp195.000
-            </span>
-          </div>
+            <span class="preview-price" :style="{ color: previewPriceLabelColor }">Rp195.000</span>
+          </aside>
         </div>
 
-        <div class="settings-actions">
+        <div class="form-actions">
           <p v-if="presentationError" class="error-text">{{ presentationError }}</p>
           <p v-else-if="presentationSaved" class="success-text">{{ presentationSaved }}</p>
 
-          <button class="primary-btn" :disabled="savingPresentation">
-            {{ savingPresentation ? 'Menyimpan...' : 'Simpan Label' }}
+          <button class="primary-btn" :disabled="presentationSaving">
+            {{ presentationSaving ? 'Menyimpan...' : 'Simpan Presentasi' }}
           </button>
         </div>
       </form>
 
-      <div class="panel controls">
-        <div>
-          <p class="stat-label">Item pada halaman ini</p>
-          <strong>{{ visibleCountOnPage }} terlihat / {{ items.length }} item</strong>
-        </div>
-
-        <label class="search-box">
-          <span>Cari item</span>
-          <input
-            v-model="search"
-            type="search"
-            placeholder="Cari nama produk atau bundle"
-          />
-        </label>
-      </div>
-
-      <div v-if="loading" class="panel center">Memuat katalog owner...</div>
-
-      <div v-else-if="error" class="panel error-panel">
-        <strong>Error:</strong> {{ error }}
-      </div>
-
-      <div v-else-if="!items.length" class="panel center">Tidak ada item ditemukan.</div>
-
-      <div v-else class="catalog-list">
-        <article v-for="item in items" :key="itemKey(item)" class="panel item-row">
-          <div class="item-main">
-            <div class="thumb">
-              <img v-if="item.images[0]" :src="item.images[0]" :alt="item.name" />
-              <span v-else>Tidak ada gambar</span>
-            </div>
-
-            <div class="item-copy">
-              <div class="meta-row">
-                <span class="type-chip">{{ typeLabel(item.entity_type) }}</span>
-                <span v-if="!item.in_stock" class="stock-chip">Stok habis</span>
-              </div>
-              <h2>{{ item.name }}</h2>
-              <p class="price">{{ formatPrice(item.price_range.min) }}</p>
-              <p class="slug">{{ item.slug }}</p>
-            </div>
+      <section v-else-if="activeSection === 'catalog'" class="catalog-shell">
+        <div class="panel catalog-toolbar">
+          <div>
+            <p class="stat-label">Item pada halaman ini</p>
+            <strong>{{ visibleCountOnPage }} terlihat / {{ items.length }} item</strong>
           </div>
 
-          <label class="toggle-wrap">
+          <label class="search-box">
+            <span>Cari item</span>
             <input
-              :checked="isVisible(item)"
-              type="checkbox"
-              :disabled="savingKey === itemKey(item)"
-              @change="updateVisibility(item, ($event.target as HTMLInputElement).checked)"
+              v-model="search"
+              type="search"
+              placeholder="Cari nama produk atau bundle"
             />
-            <span>{{ isVisible(item) ? 'Tayang' : 'Disembunyikan' }}</span>
           </label>
-        </article>
-      </div>
+        </div>
 
-      <div v-if="totalPages > 1" class="pagination">
-        <button :disabled="page === 1 || loading" @click="page--">Sebelumnya</button>
-        <span>{{ page }} / {{ totalPages }}</span>
-        <button :disabled="page === totalPages || loading" @click="page++">Berikutnya</button>
-      </div>
+        <div v-if="loadingCatalog" class="panel center">Memuat katalog owner...</div>
+        <div v-else-if="!items.length" class="panel center">Tidak ada item ditemukan.</div>
+
+        <div v-else class="catalog-list">
+          <article v-for="item in items" :key="itemKey(item)" class="panel item-row">
+            <div class="item-main">
+              <div class="thumb">
+                <img v-if="item.images[0]" :src="item.images[0]" :alt="item.name" />
+                <span v-else>Tidak ada gambar</span>
+              </div>
+
+              <div class="item-copy">
+                <div class="meta-row">
+                  <span class="type-chip">{{ typeLabel(item.entity_type) }}</span>
+                  <span v-if="!item.in_stock" class="stock-chip">Stok habis</span>
+                </div>
+                <h2>{{ item.name }}</h2>
+                <p class="price">{{ formatPrice(item.price_range.min) }}</p>
+                <p class="slug">{{ item.slug }}</p>
+              </div>
+            </div>
+
+            <label class="toggle-wrap">
+              <input
+                :checked="isVisible(item)"
+                type="checkbox"
+                :disabled="savingKey === itemKey(item)"
+                @change="updateVisibility(item, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>{{ isVisible(item) ? 'Tayang' : 'Disembunyikan' }}</span>
+            </label>
+          </article>
+        </div>
+
+        <div v-if="totalPages > 1" class="pagination">
+          <button :disabled="page === 1 || loadingCatalog" @click="page--">Sebelumnya</button>
+          <span>{{ page }} / {{ totalPages }}</span>
+          <button :disabled="page === totalPages || loadingCatalog" @click="page++">Berikutnya</button>
+        </div>
+      </section>
+
+      <form v-else class="panel section-panel" @submit.prevent="saveAdsSettings">
+        <div class="section-copy">
+          <p class="eyebrow">Ads Tracking</p>
+          <h2>Meta Ads dan conversion relay</h2>
+          <p class="subcopy">
+            Nyalakan pixel, pilih event yang dikirim ke Scalev relay, dan tentukan kapan event Purchase dianggap terjadi.
+          </p>
+        </div>
+
+        <div v-if="loadingSettings && !settingsLoaded" class="inner-loading">Memuat pengaturan tracking...</div>
+
+        <div v-else class="split-layout">
+          <div class="form-grid">
+            <label class="field checkbox-inline checkbox-strong">
+              <span>Aktifkan Meta Ads tracking</span>
+              <input v-model="metaEnabled" type="checkbox" />
+            </label>
+
+            <label class="field field-wide">
+              <span>Meta Pixel ID</span>
+              <input
+                v-model="metaPixelIdInput"
+                type="text"
+                :disabled="!metaEnabled"
+                placeholder="Misalnya: 123456789012345"
+              />
+            </label>
+
+            <div class="field field-wide note-box">
+              <strong>Catatan penting</strong>
+              <p>
+                Semua setting app-side sudah dipusatkan di sini. Untuk token dan tujuan akhir conversion relay,
+                storefront Anda tetap mengikuti konfigurasi analytics yang sudah diatur di Scalev.
+              </p>
+            </div>
+
+            <div class="field field-wide">
+              <span>Event yang dikirim</span>
+              <div class="toggle-grid">
+                <label class="checkbox-card">
+                  <input v-model="metaTrackViewContent" type="checkbox" :disabled="!metaEnabled" />
+                  <div>
+                    <strong>ViewContent</strong>
+                    <p>Dikirim saat halaman detail produk atau bundle tampil.</p>
+                  </div>
+                </label>
+
+                <label class="checkbox-card">
+                  <input v-model="metaTrackAddToCart" type="checkbox" :disabled="!metaEnabled" />
+                  <div>
+                    <strong>AddToCart</strong>
+                    <p>Dikirim setelah item berhasil masuk ke cart.</p>
+                  </div>
+                </label>
+
+                <label class="checkbox-card">
+                  <input v-model="metaTrackInitiateCheckout" type="checkbox" :disabled="!metaEnabled" />
+                  <div>
+                    <strong>InitiateCheckout</strong>
+                    <p>Dikirim saat halaman checkout dibuka dengan item yang valid.</p>
+                  </div>
+                </label>
+
+                <label class="checkbox-card">
+                  <input v-model="metaTrackPurchase" type="checkbox" :disabled="!metaEnabled" />
+                  <div>
+                    <strong>Purchase</strong>
+                    <p>Dikirim hanya dari satu titik yang Anda pilih di bawah.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>Pemicu event Purchase</span>
+              <select v-model="metaPurchaseTrigger" :disabled="!metaEnabled || !metaTrackPurchase">
+                <option value="checkout_success">Saat checkout berhasil dibuat</option>
+                <option value="order_paid">Saat halaman order berstatus lunas</option>
+              </select>
+            </label>
+          </div>
+
+          <aside class="preview-card preview-card-dark">
+            <p class="stat-label">Ringkasan tracking</p>
+            <strong>{{ metaEnabled ? 'Meta Ads aktif' : 'Meta Ads belum aktif' }}</strong>
+            <p>{{ metaPixelIdInput.trim() || 'Pixel ID belum diisi.' }}</p>
+            <span>{{ enabledMetaEvents }} event aktif</span>
+            <span>{{ metaPurchaseTriggerLabel }}</span>
+            <div class="status-pills">
+              <span :class="['status-pill', { active: metaTrackViewContent && metaEnabled }]">ViewContent</span>
+              <span :class="['status-pill', { active: metaTrackAddToCart && metaEnabled }]">AddToCart</span>
+              <span :class="['status-pill', { active: metaTrackInitiateCheckout && metaEnabled }]">InitiateCheckout</span>
+              <span :class="['status-pill', { active: metaTrackPurchase && metaEnabled }]">Purchase</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="form-actions">
+          <p v-if="adsError" class="error-text">{{ adsError }}</p>
+          <p v-else-if="adsSaved" class="success-text">{{ adsSaved }}</p>
+
+          <button class="primary-btn" :disabled="adsSaving">
+            {{ adsSaving ? 'Menyimpan...' : 'Simpan Meta Ads' }}
+          </button>
+        </div>
+      </form>
     </template>
   </section>
 </template>
@@ -518,52 +809,120 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.75rem;
-  color: #64748b;
-  margin-bottom: 0.4rem;
-}
-
-h1 {
-  font-size: 2rem;
-  margin-bottom: 0.4rem;
+  color: var(--sf-ink-muted);
 }
 
 .subcopy {
-  color: #475569;
-  max-width: 60ch;
-  line-height: 1.5;
+  color: var(--sf-ink-soft);
+  max-width: 72ch;
 }
 
-.settings-copy h2 {
-  font-size: 1.25rem;
-  margin-bottom: 0.35rem;
+.page-header h1,
+.panel h2 {
+  margin: 0.35rem 0 0.6rem;
+  font-size: clamp(1.8rem, 2vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
 }
 
 .panel {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 1rem;
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-line);
+  border-radius: 24px;
+  padding: 1.25rem;
 }
 
-.center {
+.panel.center {
   text-align: center;
-  padding: 2rem 1rem;
-  color: #64748b;
+  color: var(--sf-ink-soft);
+  padding: 2rem 1.25rem;
 }
 
 .warning {
-  background: #fff7ed;
-  border-color: #fdba74;
+  background: #fff8ef;
 }
 
-.login-wrap {
-  display: flex;
-  justify-content: center;
+.error-panel {
+  color: #8c3c2b;
+  background: #fff4ef;
+  border-color: #e7c4b9;
 }
 
-.login-panel {
-  width: min(100%, 420px);
+.overview-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.stat-card strong {
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.stat-card p {
+  color: var(--sf-ink-soft);
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sf-ink-muted);
+}
+
+.section-nav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.section-tab {
+  appearance: none;
+  border: 1px solid var(--sf-line-strong);
+  background: #fff;
+  color: var(--sf-ink);
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.section-tab:hover {
+  transform: translateY(-1px);
+}
+
+.section-tab.active {
+  border-color: var(--sf-accent);
+  background: var(--sf-accent-wash);
+  color: var(--sf-accent-strong);
+}
+
+.section-panel {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.section-copy {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -572,173 +931,260 @@ h1 {
   gap: 0.5rem;
 }
 
-.field span,
-.search-box span,
-.stat-label {
-  font-size: 0.85rem;
-  color: #64748b;
+.field span {
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .field input,
 .field textarea,
-.search-box input {
+.field select {
   width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 0.75rem 0.85rem;
-  font: inherit;
-}
-
-.field textarea {
-  resize: vertical;
-  min-height: 110px;
-}
-
-.primary-btn,
-.ghost-btn,
-.pagination button {
-  border-radius: 999px;
-  border: 1px solid #0f172a;
-  padding: 0.75rem 1rem;
-  font: inherit;
-  cursor: pointer;
-}
-
-.primary-btn {
-  background: #0f172a;
-  color: #fff;
-}
-
-.ghost-btn,
-.pagination button {
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 16px;
+  padding: 0.85rem 0.95rem;
   background: #fff;
-  color: #0f172a;
+  color: var(--sf-ink);
+  resize: vertical;
 }
 
-.primary-btn:disabled,
-.pagination button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.error-text,
-.error-panel {
-  color: #b91c1c;
-}
-
-.success-text {
-  color: #15803d;
-}
-
-.settings-panel {
-  display: grid;
-  gap: 1rem;
-}
-
-.settings-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  align-items: start;
+.field input:focus,
+.field textarea:focus,
+.field select:focus,
+.search-box input:focus {
+  outline: none;
+  border-color: var(--sf-accent);
+  box-shadow: 0 0 0 3px var(--sf-accent-wash);
 }
 
 .field-wide {
   grid-column: 1 / -1;
 }
 
-.checkbox-field {
-  align-content: start;
+.checkbox-inline {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
 }
 
-.checkbox-field input {
-  width: 1.1rem;
-  height: 1.1rem;
+.checkbox-inline input,
+.checkbox-card input {
+  width: 18px;
+  height: 18px;
 }
 
-.preview-card {
-  display: grid;
-  gap: 0.35rem;
+.checkbox-strong {
   padding: 1rem;
-  border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-
-.preview-card strong {
-  font-size: 1.1rem;
-}
-
-.preview-card h3 {
-  font-size: 1.25rem;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
-.preview-card p,
-.preview-card span {
-  color: #475569;
-}
-
-.preview-btn {
-  justify-self: start;
-  padding: 0.7rem 1.1rem;
-  border-radius: 999px;
-  border: 1px solid;
-  color: #fff;
-  font: inherit;
-  font-weight: 600;
-}
-
-.preview-price-tag {
-  justify-self: start;
-  display: inline-block;
-  font-family: var(--sf-mono);
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  font-weight: 500;
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 18px;
+  background: #fff;
 }
 
 .color-field {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto 1fr;
   gap: 0.75rem;
 }
 
 .color-picker {
-  width: 54px !important;
-  min-width: 54px;
-  height: 44px;
-  padding: 0.2rem !important;
-  border-radius: 12px !important;
+  width: 52px;
+  min-width: 52px;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .color-input {
-  flex: 1;
+  font-family: var(--sf-mono);
 }
 
-.settings-actions {
+.preview-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.25rem;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid var(--sf-line);
+}
+
+.preview-card strong {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.preview-card h3 {
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.preview-card p,
+.preview-card span {
+  color: var(--sf-ink-soft);
+}
+
+.preview-btn {
+  width: fit-content;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.8rem 1.1rem;
+  font-weight: 600;
+}
+
+.preview-price {
+  font-family: var(--sf-mono);
+  font-size: 1rem;
+}
+
+.preview-card-dark {
+  background: linear-gradient(180deg, #1f1b16 0%, #2b241d 100%);
+  color: #faf7f2;
+  border-color: transparent;
+}
+
+.preview-card-dark p,
+.preview-card-dark span,
+.preview-card-dark .stat-label {
+  color: rgba(250, 247, 242, 0.72);
+}
+
+.status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status-pill {
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(250, 247, 242, 0.18);
+  color: rgba(250, 247, 242, 0.52);
+  font-size: 0.78rem;
+}
+
+.status-pill.active {
+  border-color: rgba(250, 247, 242, 0.3);
+  color: #faf7f2;
+  background: rgba(250, 247, 242, 0.08);
+}
+
+.note-box {
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px dashed var(--sf-line-strong);
+  background: #fff;
+}
+
+.note-box p {
+  color: var(--sf-ink-soft);
+  line-height: 1.6;
+}
+
+.toggle-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.checkbox-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  align-items: start;
+  padding: 1rem;
+  border-radius: 18px;
+  border: 1px solid var(--sf-line-strong);
+  background: #fff;
+}
+
+.checkbox-card p {
+  color: var(--sf-ink-soft);
+  margin-top: 0.2rem;
+}
+
+.form-actions {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
-.controls {
+.primary-btn,
+.ghost-btn,
+.pagination button {
+  appearance: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.primary-btn {
+  border: 1px solid var(--sf-accent);
+  background: var(--sf-accent);
+  color: var(--sf-accent-contrast);
+  font-weight: 600;
+}
+
+.ghost-btn {
+  border: 1px solid var(--sf-line-strong);
+  background: #fff;
+  color: var(--sf-ink);
+}
+
+.primary-btn:disabled,
+.ghost-btn:disabled,
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-wrap {
+  display: grid;
+  place-items: center;
+}
+
+.login-panel {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 1rem;
+}
+
+.catalog-shell {
+  display: grid;
+  gap: 1rem;
+}
+
+.catalog-toolbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 1rem;
-  align-items: end;
 }
 
 .search-box {
-  width: min(100%, 320px);
   display: grid;
-  gap: 0.4rem;
+  gap: 0.35rem;
+  width: min(100%, 360px);
+}
+
+.search-box span {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.search-box input {
+  width: 100%;
+  border: 1px solid var(--sf-line-strong);
+  border-radius: 16px;
+  padding: 0.85rem 0.95rem;
+  background: #fff;
 }
 
 .catalog-list {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .item-row {
@@ -758,16 +1204,15 @@ h1 {
 .thumb {
   width: 88px;
   height: 88px;
-  flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: 18px;
   overflow: hidden;
-  background: #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--sf-line);
+  display: grid;
+  place-items: center;
+  color: var(--sf-ink-muted);
+  font-size: 0.82rem;
   text-align: center;
-  color: #64748b;
-  font-size: 0.8rem;
 }
 
 .thumb img {
@@ -778,64 +1223,62 @@ h1 {
 
 .item-copy {
   min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.item-copy h2 {
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.price {
+  font-family: var(--sf-mono);
+  font-size: 0.92rem;
+}
+
+.slug {
+  color: var(--sf-ink-muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .meta-row {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
-  margin-bottom: 0.35rem;
 }
 
 .type-chip,
 .stock-chip {
-  display: inline-flex;
-  align-items: center;
   border-radius: 999px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.35rem 0.65rem;
   font-size: 0.75rem;
-  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .type-chip {
-  background: #e0f2fe;
-  color: #075985;
+  background: #fff;
+  border: 1px solid var(--sf-line-strong);
 }
 
 .stock-chip {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-h2 {
-  font-size: 1rem;
-  margin-bottom: 0.2rem;
-}
-
-.price {
-  color: #be123c;
-  font-weight: 700;
-  margin-bottom: 0.2rem;
-}
-
-.slug {
-  color: #64748b;
-  font-size: 0.85rem;
-  overflow-wrap: anywhere;
+  color: #8c3c2b;
+  background: #fff4ef;
+  border: 1px solid #e7c4b9;
 }
 
 .toggle-wrap {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.65rem;
-  flex-shrink: 0;
-  color: #0f172a;
-  font-weight: 600;
+  gap: 0.6rem;
+  white-space: nowrap;
 }
 
 .toggle-wrap input {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 18px;
+  height: 18px;
 }
 
 .pagination {
@@ -843,19 +1286,54 @@ h2 {
   justify-content: center;
   align-items: center;
   gap: 1rem;
+  color: var(--sf-ink-soft);
 }
 
-@media (max-width: 760px) {
+.pagination button {
+  border: 1px solid var(--sf-line-strong);
+  background: #fff;
+  color: var(--sf-ink);
+}
+
+.error-text {
+  color: #8c3c2b;
+}
+
+.success-text {
+  color: #2b6b4d;
+}
+
+.inner-loading {
+  color: var(--sf-ink-soft);
+}
+
+@media (max-width: 1024px) {
+  .overview-grid,
+  .split-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
   .page-header,
-  .controls,
+  .catalog-toolbar,
   .item-row,
-  .settings-actions {
+  .form-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .search-box {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box,
+  .thumb {
     width: 100%;
+  }
+
+  .thumb {
+    max-width: 88px;
   }
 
   .toggle-wrap {

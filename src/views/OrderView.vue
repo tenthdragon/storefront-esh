@@ -3,9 +3,11 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getOrder } from '@/api/checkout'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
+import { useAnalyticsStore } from '@/stores/analytics'
 import type { Order } from '@/types'
 
 const route = useRoute()
+const analytics = useAnalyticsStore()
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -13,6 +15,9 @@ const error = ref<string | null>(null)
 onMounted(async () => {
   try {
     order.value = await getOrder(route.params.secretSlug as string)
+    if (order.value) {
+      void analytics.handleOrderPagePurchase(order.value)
+    }
   } catch (e) {
     error.value = (e as Error).message
   } finally {

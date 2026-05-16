@@ -34,6 +34,22 @@ export interface StorefrontTheme {
   priceLabelColor: string
 }
 
+export type MetaPurchaseTrigger = 'checkout_success' | 'order_paid'
+
+export interface StorefrontMetaAnalyticsSettings {
+  enabled: boolean
+  pixelId: string
+  trackViewContent: boolean
+  trackAddToCart: boolean
+  trackInitiateCheckout: boolean
+  trackPurchase: boolean
+  purchaseTrigger: MetaPurchaseTrigger
+}
+
+export interface StorefrontAnalyticsSettings {
+  meta: StorefrontMetaAnalyticsSettings
+}
+
 export interface StorefrontSettings {
   version: 1
   updatedAt: string
@@ -42,6 +58,7 @@ export interface StorefrontSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  analytics: StorefrontAnalyticsSettings
 }
 
 export interface StorefrontPublicSettings {
@@ -49,6 +66,7 @@ export interface StorefrontPublicSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  analytics: StorefrontAnalyticsSettings
 }
 
 export interface CatalogItem {

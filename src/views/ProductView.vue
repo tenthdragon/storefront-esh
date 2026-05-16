@@ -3,11 +3,13 @@ import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getProduct, getBundle } from '@/api/catalog'
 import { useCartStore } from '@/stores/cart'
+import { useAnalyticsStore } from '@/stores/analytics'
 import type { Product, Bundle, ProductVariant } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const cart = useCartStore()
+const analytics = useAnalyticsStore()
 
 const isBundle = computed(() => route.name === 'bundle')
 const slug = computed(() => route.params.slug as string)
@@ -23,6 +25,7 @@ const error = ref<string | null>(null)
 const productCardEl = ref<HTMLElement | null>(null)
 const isCardVisible = ref(true)
 let cardObserver: IntersectionObserver | null = null
+let lastTrackedViewKey = ''
 
 watch(productCardEl, (el) => {
   cardObserver?.disconnect()
@@ -40,13 +43,26 @@ const canBuy = computed(() => {
   return !!product.value?.variants.length
 })
 
-onMounted(async () => {
+async function loadItem() {
   loading.value = true
+  error.value = null
   try {
+    product.value = null
+    bundle.value = null
+    selectedVariant.value = null
+
     if (isBundle.value) {
       bundle.value = await getBundle(slug.value)
     } else {
-      product.value = await getProduct(slug.value)
+      const loadedProduct = await getProduct(slug.value)
+      product.value = {
+        ...loadedProduct,
+        variants: loadedProduct.variants.map((variant) => ({
+          ...variant,
+          name: variant.name || variant.fullname || loadedProduct.name,
+          image: variant.image ?? variant.images?.[0],
+        })),
+      }
       if (product.value.variants.length > 0) {
         selectedVariant.value = product.value.variants[0]
       }
@@ -56,6 +72,15 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(async () => {
+  await loadItem()
+})
+
+watch([slug, isBundle], () => {
+  lastTrackedViewKey = ''
+  void loadItem()
 })
 
 const currentImage = computed(() => {
@@ -64,8 +89,8 @@ const currentImage = computed(() => {
 })
 
 const currentPrice = computed(() => {
-  if (isBundle.value) return bundle.value?.price ?? 0
-  return selectedVariant.value?.price ?? 0
+  if (isBundle.value) return Number(bundle.value?.price ?? 0)
+  return Number(selectedVariant.value?.price ?? 0)
 })
 
 const originalPrice = computed(() => {
@@ -100,12 +125,18 @@ async function addToCart() {
         bundle_price_option_id: bundle.value.id,
         quantity: quantity.value,
       })
+      const trackedItem = cart.cart?.items.find((item) =>
+        item.type === 'bundle_price_option' && item.bundle_price_option_id === bundle.value?.id)
+      void analytics.trackMetaAddToCart(trackedItem ?? null, quantity.value)
     } else if (selectedVariant.value) {
       await cart.addItem({
         type: 'variant',
         variant_id: selectedVariant.value.id,
         quantity: quantity.value,
       })
+      const trackedItem = cart.cart?.items.find((item) =>
+        item.type === 'variant' && item.variant_id === selectedVariant.value?.id)
+      void analytics.trackMetaAddToCart(trackedItem ?? null, quantity.value)
     }
     router.push('/cart')
   } catch (e) {
@@ -124,6 +155,37 @@ function normalizePlainDescription(description?: string) {
     .trim()
   return normalized || null
 }
+
+watch(
+  () => {
+    if (isBundle.value && bundle.value) {
+      return `bundle:${bundle.value.id}`
+    }
+
+    if (product.value && selectedVariant.value) {
+      return `product:${product.value.id}:${selectedVariant.value.id}`
+    }
+
+    if (product.value) {
+      return `product:${product.value.id}`
+    }
+
+    return ''
+  },
+  (key) => {
+    if (!key || key === lastTrackedViewKey) return
+    lastTrackedViewKey = key
+
+    if (isBundle.value && bundle.value) {
+      void analytics.trackMetaViewContentForBundle(bundle.value)
+      return
+    }
+
+    if (product.value) {
+      void analytics.trackMetaViewContentForProduct(product.value, selectedVariant.value)
+    }
+  },
+)
 </script>
 
 <template>

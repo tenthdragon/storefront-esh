@@ -2,7 +2,7 @@ const API_BASE = '/scalev-api'
 const STORE_ID = import.meta.env.VITE_SCALEV_STORE_UNIQUE_ID as string
 const STOREFRONT_KEY = import.meta.env.VITE_SCALEV_STOREFRONT_API_KEY as string
 
-function getGuestToken(): string | null {
+export function getScalevGuestToken(): string | null {
   return localStorage.getItem('scalev_guest_token')
 }
 
@@ -14,7 +14,7 @@ function createStorefrontHeaders(init: RequestInit = {}) {
   const headers = new Headers(init.headers as HeadersInit)
   headers.set('Accept', 'application/json')
   headers.set('X-Scalev-Storefront-Api-Key', STOREFRONT_KEY)
-  const guestToken = getGuestToken()
+  const guestToken = getScalevGuestToken()
   if (guestToken) {
     headers.set('X-Scalev-Guest-Token', guestToken)
   }

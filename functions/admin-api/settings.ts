@@ -52,6 +52,17 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
       buttonColor?: unknown
       priceLabelColor?: unknown
     }
+    analytics?: {
+      meta?: {
+        enabled?: unknown
+        pixelId?: unknown
+        trackViewContent?: unknown
+        trackAddToCart?: unknown
+        trackInitiateCheckout?: unknown
+        trackPurchase?: unknown
+        purchaseTrigger?: unknown
+      }
+    }
   } | null
 
   const hasStoreName = !!body?.branding && Object.prototype.hasOwnProperty.call(body.branding, 'storeName')
@@ -63,8 +74,37 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     && Object.prototype.hasOwnProperty.call(body.sections.catalog, 'title')
   const hasButtonColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'buttonColor')
   const hasPriceLabelColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'priceLabelColor')
+  const hasMetaEnabled = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'enabled')
+  const hasMetaPixelId = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'pixelId')
+  const hasMetaTrackViewContent = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'trackViewContent')
+  const hasMetaTrackAddToCart = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'trackAddToCart')
+  const hasMetaTrackInitiateCheckout = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'trackInitiateCheckout')
+  const hasMetaTrackPurchase = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'trackPurchase')
+  const hasMetaPurchaseTrigger = !!body?.analytics?.meta
+    && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'purchaseTrigger')
 
-  if (!hasStoreName && !hasHeroTitle && !hasHeroSubtitle && !hasCatalogVisible && !hasCatalogTitle && !hasButtonColor && !hasPriceLabelColor) {
+  if (
+    !hasStoreName
+    && !hasHeroTitle
+    && !hasHeroSubtitle
+    && !hasCatalogVisible
+    && !hasCatalogTitle
+    && !hasButtonColor
+    && !hasPriceLabelColor
+    && !hasMetaEnabled
+    && !hasMetaPixelId
+    && !hasMetaTrackViewContent
+    && !hasMetaTrackAddToCart
+    && !hasMetaTrackInitiateCheckout
+    && !hasMetaTrackPurchase
+    && !hasMetaPurchaseTrigger
+  ) {
     return errorJson(400, 'Payload pengaturan tampilan tidak valid.')
   }
 
@@ -75,6 +115,13 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
   const catalogTitle = body?.sections?.catalog?.title
   const buttonColor = body?.theme?.buttonColor
   const priceLabelColor = body?.theme?.priceLabelColor
+  const metaEnabled = body?.analytics?.meta?.enabled
+  const metaPixelId = body?.analytics?.meta?.pixelId
+  const metaTrackViewContent = body?.analytics?.meta?.trackViewContent
+  const metaTrackAddToCart = body?.analytics?.meta?.trackAddToCart
+  const metaTrackInitiateCheckout = body?.analytics?.meta?.trackInitiateCheckout
+  const metaTrackPurchase = body?.analytics?.meta?.trackPurchase
+  const metaPurchaseTrigger = body?.analytics?.meta?.purchaseTrigger
 
   if (hasStoreName && typeof storeName !== 'string') {
     return errorJson(400, 'Nama toko harus berupa teks.')
@@ -118,6 +165,38 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     }
   }
 
+  if (hasMetaEnabled && typeof metaEnabled !== 'boolean') {
+    return errorJson(400, 'Status Meta Ads harus berupa boolean.')
+  }
+
+  if (hasMetaPixelId && typeof metaPixelId !== 'string') {
+    return errorJson(400, 'Meta Pixel ID harus berupa teks.')
+  }
+
+  if (hasMetaTrackViewContent && typeof metaTrackViewContent !== 'boolean') {
+    return errorJson(400, 'Status ViewContent harus berupa boolean.')
+  }
+
+  if (hasMetaTrackAddToCart && typeof metaTrackAddToCart !== 'boolean') {
+    return errorJson(400, 'Status AddToCart harus berupa boolean.')
+  }
+
+  if (hasMetaTrackInitiateCheckout && typeof metaTrackInitiateCheckout !== 'boolean') {
+    return errorJson(400, 'Status InitiateCheckout harus berupa boolean.')
+  }
+
+  if (hasMetaTrackPurchase && typeof metaTrackPurchase !== 'boolean') {
+    return errorJson(400, 'Status Purchase harus berupa boolean.')
+  }
+
+  if (
+    hasMetaPurchaseTrigger
+    && metaPurchaseTrigger !== 'checkout_success'
+    && metaPurchaseTrigger !== 'order_paid'
+  ) {
+    return errorJson(400, 'Pemicu Purchase Meta harus `checkout_success` atau `order_paid`.')
+  }
+
   try {
     return json(await setPresentation(context.env, {
       storeName: typeof storeName === 'string' ? storeName : undefined,
@@ -127,6 +206,17 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
       catalogTitle: typeof catalogTitle === 'string' ? catalogTitle : undefined,
       buttonColor: typeof buttonColor === 'string' ? buttonColor : undefined,
       priceLabelColor: typeof priceLabelColor === 'string' ? priceLabelColor : undefined,
+      metaEnabled: typeof metaEnabled === 'boolean' ? metaEnabled : undefined,
+      metaPixelId: typeof metaPixelId === 'string' ? metaPixelId : undefined,
+      metaTrackViewContent: typeof metaTrackViewContent === 'boolean' ? metaTrackViewContent : undefined,
+      metaTrackAddToCart: typeof metaTrackAddToCart === 'boolean' ? metaTrackAddToCart : undefined,
+      metaTrackInitiateCheckout: typeof metaTrackInitiateCheckout === 'boolean'
+        ? metaTrackInitiateCheckout
+        : undefined,
+      metaTrackPurchase: typeof metaTrackPurchase === 'boolean' ? metaTrackPurchase : undefined,
+      metaPurchaseTrigger: metaPurchaseTrigger === 'checkout_success' || metaPurchaseTrigger === 'order_paid'
+        ? metaPurchaseTrigger
+        : undefined,
     }))
   } catch (error) {
     return errorJson(500, (error as Error).message)
