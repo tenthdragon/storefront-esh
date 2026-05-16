@@ -97,7 +97,6 @@ export async function getAdminItems(params: {
   search?: string
 } = {}) {
   const query = new URLSearchParams()
-  query.set('admin', '1')
   if (params.page) query.set('page', String(params.page))
   if (params.per_page) query.set('per_page', String(params.per_page))
   if (params.search) query.set('search', params.search)
@@ -108,7 +107,6 @@ export async function getAdminItems(params: {
 
 export async function getAdminItemCount(search?: string) {
   const query = new URLSearchParams()
-  query.set('admin', '1')
   if (search) query.set('search', search)
 
   const res = await adminStorefrontFetch(`/public/items/count?${query}`)

@@ -283,6 +283,7 @@ export async function saveSettings(env: StorefrontEnv, settings: StorefrontSetti
 
 export function toPublicSettings(settings: StorefrontSettings): StorefrontPublicSettings {
   return {
+    hiddenItemKeys: Object.keys(settings.items),
     branding: settings.branding,
     hero: settings.hero,
     sections: settings.sections,

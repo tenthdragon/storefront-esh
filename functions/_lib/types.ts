@@ -69,6 +69,7 @@ export interface StorefrontSettings {
 }
 
 export interface StorefrontPublicSettings {
+  hiddenItemKeys: string[]
   branding: StorefrontBranding
   hero: StorefrontHero
   sections: StorefrontSections

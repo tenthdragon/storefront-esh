@@ -1,4 +1,4 @@
-import { storefrontFetch, directStorefrontFetch, parseResponse } from './client'
+import { storefrontFetch, parseResponse } from './client'
 import type { Location, ShippingOption, Summary, Order, PaymentMethodOption } from '@/types'
 
 export async function searchLocations(search: string) {
@@ -57,7 +57,7 @@ export interface CheckoutPayload {
 }
 
 export async function submitCheckout(payload: CheckoutPayload) {
-  const res = await directStorefrontFetch('/public/checkout', {
+  const res = await storefrontFetch('/public/checkout', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

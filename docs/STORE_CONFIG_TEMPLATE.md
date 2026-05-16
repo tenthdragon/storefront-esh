@@ -24,7 +24,6 @@ Isi dokumen ini dulu saat akan membuat storefront baru dari starter ini.
 
 ## Scalev
 
-- `VITE_SCALEV_API_BASE`: `https://api.scalev.com`
 - `VITE_SCALEV_STORE_UNIQUE_ID`:
 - `VITE_SCALEV_STOREFRONT_API_KEY`:
 

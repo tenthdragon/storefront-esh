@@ -23,7 +23,6 @@ function isStorefrontHtmlPath(pathname: string) {
     !pathname.startsWith('/admin')
     && !pathname.startsWith('/admin-api')
     && !pathname.startsWith('/storefront-api')
-    && !pathname.startsWith('/scalev-api')
     && !pathname.startsWith('/assets/')
   )
 }

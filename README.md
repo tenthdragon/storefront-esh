@@ -19,7 +19,7 @@ Pendekatan ini membuat setiap store tetap terisolasi, mudah di-branding ulang, d
 - Visibility produk dan bundle per store
 - Branding store name, hero title, hero subtitle, catalog section title
 - Theme button color dan warna tulisan harga
-- Filter katalog melalui Cloudflare Functions + KV
+- Filter katalog melalui settings publik + KV
 - Deploy production hanya lewat GitHub + Cloudflare Pages Git integration
 
 ## Arsitektur Inti
@@ -27,7 +27,7 @@ Pendekatan ini membuat setiap store tetap terisolasi, mudah di-branding ulang, d
 - Frontend: Vue 3 + Vite
 - Routing: Vue Router
 - State: Pinia
-- API publik: Scalev storefront endpoints
+- API publik: Scalev Storefront API v3 dipanggil langsung dari browser
 - Edge layer: Cloudflare Pages Functions
 - Settings admin: Cloudflare KV (`STOREFRONT_SETTINGS`)
 - Production deploy: GitHub push ke branch `main`
@@ -60,7 +60,6 @@ Model yang disarankan:
 
 1. Copy [`.env.example`](/Users/armyalghifari/Documents/Github/storefront/.env.example) ke `.env` untuk local development.
 2. Isi:
-   - `VITE_SCALEV_API_BASE`
    - `VITE_SCALEV_STORE_UNIQUE_ID`
    - `VITE_SCALEV_STOREFRONT_API_KEY`
 3. Jalankan `npm install`
@@ -114,6 +113,7 @@ Dokumen lengkapnya ada di [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Docu
 - [docs/LLM_STORE_LAUNCH_RUNBOOK.md](/Users/armyalghifari/Documents/Github/storefront/docs/LLM_STORE_LAUNCH_RUNBOOK.md)
 - [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Documents/Github/storefront/docs/NAMING_CONVENTIONS.md)
 - [docs/STORE_CONFIG_TEMPLATE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_CONFIG_TEMPLATE.md)
+- [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md)
 
 ## Catatan Penting
 
@@ -122,6 +122,7 @@ Dokumen lengkapnya ada di [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Docu
 - KV harus dibuat per store, jangan dipakai bersama untuk store yang berbeda.
 - `npm run deploy` memang diblok. Production release hanya boleh lewat GitHub ke `main`.
 - Setelah repo diduplikasi untuk store baru, jalankan `npm run bootstrap:store` sebelum setup Cloudflare.
+- Jangan pernah memproxy Storefront API v3 melalui backend atau edge layer sendiri. Lihat [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md).
 
 ## Prompt Handoff untuk LLM Lain
 

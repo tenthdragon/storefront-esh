@@ -10,6 +10,7 @@ Asumsikan model berikut:
 2. satu store Scalev = satu Cloudflare Pages project
 3. satu store Scalev = satu KV namespace
 4. deploy production hanya lewat GitHub integration ke branch `main`
+5. Storefront API v3 dipanggil langsung dari browser, tidak diproxy lewat backend atau edge
 
 Jangan gabungkan beberapa store yang berbeda ke satu repository kecuali memang ada keputusan eksplisit untuk membangun platform multi-tenant.
 
@@ -60,7 +61,6 @@ npm run bootstrap:store -- --store-slug <store-slug> --kv-id <kv-namespace-id>
 
 2. copy `.env.example` ke `.env`
 3. isi:
-   - `VITE_SCALEV_API_BASE=https://api.scalev.com`
    - `VITE_SCALEV_STORE_UNIQUE_ID`
    - `VITE_SCALEV_STOREFRONT_API_KEY`
 4. jalankan `npm install`
@@ -83,7 +83,6 @@ Pages setup:
 Bindings dan secrets yang wajib ada:
 
 - KV binding: `STOREFRONT_SETTINGS`
-- env var: `VITE_SCALEV_API_BASE`
 - env var: `VITE_SCALEV_STORE_UNIQUE_ID`
 - env var: `VITE_SCALEV_STOREFRONT_API_KEY`
 - secret: `ADMIN_PASSWORD`
@@ -178,6 +177,7 @@ LLM tidak boleh:
 - menyimpan secret production ke git
 - memakai satu KV namespace untuk store yang berbeda
 - memakai satu repo yang sama untuk store di Cloudflare account berbeda tanpa mengecek batasan integrasi
+- membuat proxy internal untuk Storefront API v3
 
 ## Handoff Prompt yang Direkomendasikan
 

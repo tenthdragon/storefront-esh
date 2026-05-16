@@ -1,5 +1,4 @@
-const API_BASE = '/scalev-api'
-const DIRECT_API_BASE = 'https://api.scalev.com'
+const API_BASE = 'https://api.scalev.com'
 const STORE_ID = import.meta.env.VITE_SCALEV_STORE_UNIQUE_ID as string
 const STOREFRONT_KEY = import.meta.env.VITE_SCALEV_STOREFRONT_API_KEY as string
 
@@ -27,13 +26,12 @@ function createStorefrontHeaders(init: RequestInit = {}) {
 }
 
 async function requestStorefront(
-  baseUrl: string,
   path: string,
   init: RequestInit = {},
   credentials: RequestCredentials,
 ): Promise<Response> {
   const headers = createStorefrontHeaders(init)
-  const response = await fetch(`${baseUrl}/v3/stores/${STORE_ID}${path}`, {
+  const response = await fetch(`${API_BASE}/v3/stores/${STORE_ID}${path}`, {
     ...init,
     credentials,
     headers,
@@ -46,15 +44,15 @@ async function requestStorefront(
 }
 
 export async function storefrontFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  return requestStorefront(API_BASE, path, init, 'omit')
+  return requestStorefront(path, init, 'omit')
 }
 
 export async function adminStorefrontFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  return requestStorefront(API_BASE, path, init, 'same-origin')
+  return requestStorefront(path, init, 'same-origin')
 }
 
 export async function directStorefrontFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  return requestStorefront(DIRECT_API_BASE, path, init, 'omit')
+  return requestStorefront(path, init, 'omit')
 }
 
 export async function customerFetch(
