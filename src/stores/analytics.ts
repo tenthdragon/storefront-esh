@@ -315,19 +315,9 @@ function dispatchMetaBrowserEvent(
   } = {},
 ) {
   const win = getBrowserWindow()
-  const pixelId = options.pixelId?.trim()
   if (!win?.fbq) return false
 
   const eventOptions = options.eventId ? { eventID: options.eventId } : undefined
-
-  if (pixelId) {
-    try {
-      win.fbq('trackSingle', pixelId, eventName, parameters, eventOptions)
-      return true
-    } catch {
-      // Fall back to generic track below.
-    }
-  }
 
   try {
     win.fbq('track', eventName, parameters, eventOptions)

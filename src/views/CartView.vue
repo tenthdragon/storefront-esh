@@ -2,6 +2,7 @@
 import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
+import type { CartItem } from '@/types'
 
 const cart = useCartStore()
 const router = useRouter()
@@ -9,6 +10,25 @@ const router = useRouter()
 onMounted(() => cart.fetchCart())
 
 const subtotal = computed(() => cart.subtotal)
+
+function getCartItemName(item: CartItem) {
+  return (
+    item.name
+    || item.product_name
+    || item.variant_name
+    || item.bundle_name
+    || item.bundle_price_option_name
+    || 'Item'
+  )
+}
+
+function getCartItemImage(item: CartItem) {
+  return item.image || item.bundlelines?.[0]?.image || undefined
+}
+
+function getCartItemInitial(item: CartItem) {
+  return getCartItemName(item).trim().charAt(0).toUpperCase() || 'I'
+}
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat('id-ID', {
@@ -28,8 +48,9 @@ function formatPrice(price: number) {
     </header>
 
     <div v-if="cart.loading" class="state-block">Memuat...</div>
+    <div v-else-if="cart.error" class="state-error">{{ cart.error }}</div>
 
-    <div v-else-if="!cart.cart?.items.length" class="empty-panel">
+    <div v-else-if="!cart.cart?.items?.length" class="empty-panel">
       <p>Keranjang masih kosong.</p>
       <RouterLink to="/" class="btn-shop">Mulai Belanja</RouterLink>
     </div>
@@ -37,12 +58,12 @@ function formatPrice(price: number) {
     <div v-else class="cart-layout">
       <div class="items-panel">
         <article v-for="item in cart.cart!.items" :key="item.id" class="cart-item">
-          <img v-if="item.image" :src="item.image" :alt="item.name" class="item-img" />
-          <div v-else class="no-img">{{ item.name.charAt(0) }}</div>
+          <img v-if="getCartItemImage(item)" :src="getCartItemImage(item)" :alt="getCartItemName(item)" class="item-img" />
+          <div v-else class="no-img">{{ getCartItemInitial(item) }}</div>
 
           <div class="item-info">
-            <p class="item-name">{{ item.name }}</p>
-            <p class="item-price">{{ formatPrice(item.price) }}</p>
+            <p class="item-name">{{ getCartItemName(item) }}</p>
+            <p class="item-price">{{ formatPrice(Number(item.price ?? 0)) }}</p>
           </div>
 
           <div class="qty-ctrl">
@@ -105,6 +126,14 @@ h1 {
   text-align: center;
   color: var(--sf-ink-soft);
   padding: 64px 16px;
+}
+
+.state-error {
+  background: #fff4ef;
+  border: 1px solid var(--sf-accent-soft);
+  border-radius: 24px;
+  color: var(--sf-accent-strong);
+  padding: 18px 20px;
 }
 
 .empty-panel {

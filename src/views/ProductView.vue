@@ -125,7 +125,7 @@ async function addToCart() {
         bundle_price_option_id: bundle.value.id,
         quantity: quantity.value,
       })
-      void analytics.trackMetaAddToCartForBundle(bundle.value, quantity.value)
+      await analytics.trackMetaAddToCartForBundle(bundle.value, quantity.value)
     } else if (selectedVariant.value) {
       await cart.addItem({
         type: 'variant',
@@ -133,7 +133,7 @@ async function addToCart() {
         quantity: quantity.value,
       })
       if (product.value) {
-        void analytics.trackMetaAddToCartForProduct(product.value, selectedVariant.value, quantity.value)
+        await analytics.trackMetaAddToCartForProduct(product.value, selectedVariant.value, quantity.value)
       }
     }
     router.push('/cart')
