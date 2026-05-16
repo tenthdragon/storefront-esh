@@ -52,6 +52,10 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
       buttonColor?: unknown
       priceLabelColor?: unknown
     }
+    checkout?: {
+      whatsappNumber?: unknown
+      whatsappButtonLabel?: unknown
+    }
     analytics?: {
       meta?: {
         enabled?: unknown
@@ -74,6 +78,10 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     && Object.prototype.hasOwnProperty.call(body.sections.catalog, 'title')
   const hasButtonColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'buttonColor')
   const hasPriceLabelColor = !!body?.theme && Object.prototype.hasOwnProperty.call(body.theme, 'priceLabelColor')
+  const hasCheckoutWhatsappNumber = !!body?.checkout
+    && Object.prototype.hasOwnProperty.call(body.checkout, 'whatsappNumber')
+  const hasCheckoutWhatsappButtonLabel = !!body?.checkout
+    && Object.prototype.hasOwnProperty.call(body.checkout, 'whatsappButtonLabel')
   const hasMetaEnabled = !!body?.analytics?.meta
     && Object.prototype.hasOwnProperty.call(body.analytics.meta, 'enabled')
   const hasMetaPixelId = !!body?.analytics?.meta
@@ -97,6 +105,8 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     && !hasCatalogTitle
     && !hasButtonColor
     && !hasPriceLabelColor
+    && !hasCheckoutWhatsappNumber
+    && !hasCheckoutWhatsappButtonLabel
     && !hasMetaEnabled
     && !hasMetaPixelId
     && !hasMetaTrackViewContent
@@ -115,6 +125,8 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
   const catalogTitle = body?.sections?.catalog?.title
   const buttonColor = body?.theme?.buttonColor
   const priceLabelColor = body?.theme?.priceLabelColor
+  const checkoutWhatsappNumber = body?.checkout?.whatsappNumber
+  const checkoutWhatsappButtonLabel = body?.checkout?.whatsappButtonLabel
   const metaEnabled = body?.analytics?.meta?.enabled
   const metaPixelId = body?.analytics?.meta?.pixelId
   const metaTrackViewContent = body?.analytics?.meta?.trackViewContent
@@ -165,6 +177,14 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
     }
   }
 
+  if (hasCheckoutWhatsappNumber && typeof checkoutWhatsappNumber !== 'string') {
+    return errorJson(400, 'Nomor WhatsApp checkout harus berupa teks.')
+  }
+
+  if (hasCheckoutWhatsappButtonLabel && typeof checkoutWhatsappButtonLabel !== 'string') {
+    return errorJson(400, 'Label tombol WhatsApp checkout harus berupa teks.')
+  }
+
   if (hasMetaEnabled && typeof metaEnabled !== 'boolean') {
     return errorJson(400, 'Status Meta Ads harus berupa boolean.')
   }
@@ -206,6 +226,10 @@ export const onRequestPatch: PagesFunction<StorefrontEnv> = async (context) => {
       catalogTitle: typeof catalogTitle === 'string' ? catalogTitle : undefined,
       buttonColor: typeof buttonColor === 'string' ? buttonColor : undefined,
       priceLabelColor: typeof priceLabelColor === 'string' ? priceLabelColor : undefined,
+      checkoutWhatsappNumber: typeof checkoutWhatsappNumber === 'string' ? checkoutWhatsappNumber : undefined,
+      checkoutWhatsappButtonLabel: typeof checkoutWhatsappButtonLabel === 'string'
+        ? checkoutWhatsappButtonLabel
+        : undefined,
       metaEnabled: typeof metaEnabled === 'boolean' ? metaEnabled : undefined,
       metaPixelId: typeof metaPixelId === 'string' ? metaPixelId : undefined,
       metaTrackViewContent: typeof metaTrackViewContent === 'boolean' ? metaTrackViewContent : undefined,

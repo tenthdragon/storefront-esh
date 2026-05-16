@@ -71,6 +71,21 @@ const customerSubmitLabel = computed(() => {
 
   return 'Lanjutkan'
 })
+const customerPhoneInput = computed({
+  get: () => formatPhoneForDisplay(form.value.customer_phone),
+  set: (value: string) => {
+    form.value.customer_phone = normalizePhoneDigits(value)
+  },
+})
+
+function normalizePhoneDigits(value: string) {
+  return value.replace(/\D/g, '').slice(0, 15)
+}
+
+function formatPhoneForDisplay(value: string) {
+  const digits = normalizePhoneDigits(value)
+  return digits.match(/.{1,4}/g)?.join(' ') ?? digits
+}
 
 function onLocationSelect(loc: Location, postalCode: string) {
   selectedLocation.value = loc
@@ -89,6 +104,7 @@ function buildDigitalSummary(): Summary {
 
 async function continueFromCustomerStep() {
   error.value = null
+  form.value.customer_phone = normalizePhoneDigits(form.value.customer_phone)
 
   if (!needsShipping.value) {
     summary.value = buildDigitalSummary()
@@ -147,7 +163,7 @@ async function placeOrder() {
     const payload = {
       customer_name: form.value.customer_name,
       customer_email: form.value.customer_email,
-      customer_phone: form.value.customer_phone,
+      customer_phone: normalizePhoneDigits(form.value.customer_phone),
       payment_method: form.value.payment_method,
       ...(needsShipping.value && selectedLocation.value && selectedShipping.value
         ? {
@@ -229,11 +245,12 @@ function goBack() {
       <div class="field">
         <label>No. HP (format: 628xxx)</label>
         <input
-          v-model="form.customer_phone"
+          v-model="customerPhoneInput"
           type="tel"
           inputmode="numeric"
-          pattern="[0-9]*"
+          pattern="[0-9 ]*"
           autocomplete="tel"
+          placeholder="0877 8127 9345"
           required
         />
       </div>

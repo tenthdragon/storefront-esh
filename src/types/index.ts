@@ -38,6 +38,11 @@ export interface StorefrontTheme {
   priceLabelColor: string
 }
 
+export interface StorefrontCheckoutSettings {
+  whatsappNumber: string
+  whatsappButtonLabel: string
+}
+
 export type MetaPurchaseTrigger = 'checkout_success' | 'order_paid'
 
 export interface StorefrontMetaAnalyticsSettings {
@@ -62,6 +67,7 @@ export interface StorefrontSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  checkout: StorefrontCheckoutSettings
   analytics: StorefrontAnalyticsSettings
 }
 
@@ -70,6 +76,7 @@ export interface StorefrontPublicSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  checkout: StorefrontCheckoutSettings
   analytics: StorefrontAnalyticsSettings
 }
 
@@ -181,9 +188,17 @@ export interface Summary {
 }
 
 export interface PaymentAccount {
-  bank_name: string
+  id?: number
+  bank_name?: string
   account_number: string
-  account_name: string
+  account_name?: string
+  account_holder?: string
+  method?: string
+  financial_entity?: {
+    id?: number
+    code?: string
+    name?: string
+  }
 }
 
 export interface Order {
@@ -200,12 +215,14 @@ export interface Order {
   shipping_cost: number
   shipping_discount: number
   gross_revenue: number
+  unique_code_discount?: number | string
   payment_method: string
   payment_url?: string
   chat_message?: string
+  handler_phone?: string
   variants?: unknown
   bundle_price_options?: unknown
-  store: {
-    payment_accounts: PaymentAccount[]
+  store?: {
+    payment_accounts?: PaymentAccount[]
   }
 }

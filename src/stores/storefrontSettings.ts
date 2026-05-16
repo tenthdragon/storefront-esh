@@ -25,6 +25,10 @@ function createDefaultSettings(): StorefrontPublicSettings {
       buttonColor: DEFAULT_BUTTON_COLOR,
       priceLabelColor: DEFAULT_PRICE_LABEL_COLOR,
     },
+    checkout: {
+      whatsappNumber: '',
+      whatsappButtonLabel: 'Konfirmasi via WhatsApp',
+    },
     analytics: {
       meta: {
         enabled: false,
@@ -59,6 +63,10 @@ function normalizeSettings(input: StorefrontPublicSettings): StorefrontPublicSet
     theme: {
       buttonColor: input.theme?.buttonColor ?? DEFAULT_SETTINGS.theme.buttonColor,
       priceLabelColor: input.theme?.priceLabelColor ?? DEFAULT_SETTINGS.theme.priceLabelColor,
+    },
+    checkout: {
+      whatsappNumber: input.checkout?.whatsappNumber ?? DEFAULT_SETTINGS.checkout.whatsappNumber,
+      whatsappButtonLabel: input.checkout?.whatsappButtonLabel ?? DEFAULT_SETTINGS.checkout.whatsappButtonLabel,
     },
     analytics: {
       meta: {
@@ -141,6 +149,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
   const catalogHeadingTitle = computed(() => settings.value.sections.catalog.title || DEFAULT_SETTINGS.sections.catalog.title)
   const buttonColor = computed(() => normalizeHexColor(settings.value.theme.buttonColor, DEFAULT_BUTTON_COLOR))
   const priceLabelColor = computed(() => normalizeHexColor(settings.value.theme.priceLabelColor, DEFAULT_PRICE_LABEL_COLOR))
+  const checkoutSettings = computed(() => settings.value.checkout)
   const metaSettings = computed(() => settings.value.analytics.meta)
   const accentStrong = computed(() => mixColors(buttonColor.value, '#1f1b16', 0.22))
   const accentSoft = computed(() => mixColors(buttonColor.value, '#faf7f2', 0.76))
@@ -196,6 +205,7 @@ export const useStorefrontSettingsStore = defineStore('storefront-settings', () 
     catalogHeadingTitle,
     buttonColor,
     priceLabelColor,
+    checkoutSettings,
     themeVars,
     applySettings,
     fetchSettings,

@@ -13,7 +13,7 @@ import {
 import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
 import type { Item, MetaPurchaseTrigger, StorefrontSettings } from '@/types'
 
-type AdminSection = 'presentation' | 'catalog' | 'ads'
+type AdminSection = 'presentation' | 'catalog' | 'checkout' | 'ads'
 
 const DEFAULT_SETTINGS: StorefrontSettings = {
   version: 1,
@@ -35,6 +35,10 @@ const DEFAULT_SETTINGS: StorefrontSettings = {
   theme: {
     buttonColor: '#b85c38',
     priceLabelColor: '#1f1b16',
+  },
+  checkout: {
+    whatsappNumber: '',
+    whatsappButtonLabel: 'Konfirmasi via WhatsApp',
   },
   analytics: {
     meta: {
@@ -79,6 +83,12 @@ const showCatalogHeading = ref(true)
 const catalogHeadingInput = ref('Katalog Produk')
 const buttonColorInput = ref('#b85c38')
 const priceLabelColorInput = ref('#1f1b16')
+
+const checkoutSaving = ref(false)
+const checkoutError = ref<string | null>(null)
+const checkoutSaved = ref<string | null>(null)
+const checkoutWhatsappNumberInput = ref('')
+const checkoutWhatsappButtonLabelInput = ref('Konfirmasi via WhatsApp')
 
 const adsSaving = ref(false)
 const adsError = ref<string | null>(null)
@@ -166,6 +176,11 @@ function syncPresentationForm() {
   priceLabelColorInput.value = settings.value.theme.priceLabelColor
 }
 
+function syncCheckoutForm() {
+  checkoutWhatsappNumberInput.value = settings.value.checkout.whatsappNumber
+  checkoutWhatsappButtonLabelInput.value = settings.value.checkout.whatsappButtonLabel
+}
+
 function syncAdsForm() {
   metaEnabled.value = settings.value.analytics.meta.enabled
   metaPixelIdInput.value = settings.value.analytics.meta.pixelId
@@ -182,6 +197,7 @@ function syncPublicStorefrontSettings() {
     hero: settings.value.hero,
     sections: settings.value.sections,
     theme: settings.value.theme,
+    checkout: settings.value.checkout,
     analytics: settings.value.analytics,
   })
 }
@@ -210,6 +226,7 @@ async function loadSettings() {
     settings.value = await getStorefrontSettings()
     syncPublicStorefrontSettings()
     syncPresentationForm()
+    syncCheckoutForm()
     syncAdsForm()
     settingsLoaded.value = true
   } catch (error) {
@@ -272,6 +289,8 @@ async function handleLogout() {
   count.value = 0
   presentationSaved.value = null
   presentationError.value = null
+  checkoutSaved.value = null
+  checkoutError.value = null
   adsSaved.value = null
   adsError.value = null
 }
@@ -333,12 +352,35 @@ async function savePresentation() {
     })
     syncPublicStorefrontSettings()
     syncPresentationForm()
+    syncCheckoutForm()
     syncAdsForm()
     presentationSaved.value = 'Presentasi storefront berhasil disimpan.'
   } catch (error) {
     presentationError.value = (error as Error).message
   } finally {
     presentationSaving.value = false
+  }
+}
+
+async function saveCheckoutSettings() {
+  checkoutSaving.value = true
+  checkoutError.value = null
+  checkoutSaved.value = null
+
+  try {
+    settings.value = await updateStorefrontSettings({
+      checkout: {
+        whatsappNumber: checkoutWhatsappNumberInput.value,
+        whatsappButtonLabel: checkoutWhatsappButtonLabelInput.value,
+      },
+    })
+    syncPublicStorefrontSettings()
+    syncCheckoutForm()
+    checkoutSaved.value = 'Pengaturan checkout berhasil disimpan.'
+  } catch (error) {
+    checkoutError.value = (error as Error).message
+  } finally {
+    checkoutSaving.value = false
   }
 }
 
@@ -409,6 +451,16 @@ watch(
 
 watch(
   [
+    checkoutWhatsappNumberInput,
+    checkoutWhatsappButtonLabelInput,
+  ],
+  () => {
+    checkoutSaved.value = null
+  },
+)
+
+watch(
+  [
     metaEnabled,
     metaPixelIdInput,
     metaTrackViewContent,
@@ -430,7 +482,7 @@ watch(
         <p class="eyebrow">Owner Settings</p>
         <h1>Control Center Storefront</h1>
         <p class="subcopy">
-          Semua pengaturan storefront dikumpulkan di sini: presentasi, kurasi katalog, dan event tracking Meta Ads.
+          Semua pengaturan storefront dikumpulkan di sini: presentasi, kurasi katalog, checkout, dan event tracking Meta Ads.
         </p>
       </div>
 
@@ -492,6 +544,12 @@ watch(
           <strong>{{ metaEnabled ? 'Aktif' : 'Belum aktif' }}</strong>
           <p>{{ metaEnabled ? `${enabledMetaEvents} event aktif • ${metaPurchaseTriggerLabel}` : 'Pixel dan relay event belum dinyalakan.' }}</p>
         </article>
+
+        <article class="panel stat-card">
+          <span class="stat-label">Checkout</span>
+          <strong>{{ checkoutWhatsappNumberInput.trim() ? 'WA konfirmasi aktif' : 'WA belum diatur' }}</strong>
+          <p>{{ checkoutWhatsappButtonLabelInput.trim() || 'Konfirmasi via WhatsApp' }}</p>
+        </article>
       </section>
 
       <nav class="section-nav" aria-label="Admin sections">
@@ -508,6 +566,13 @@ watch(
           @click="activeSection = 'catalog'"
         >
           Katalog
+        </button>
+        <button
+          type="button"
+          :class="['section-tab', { active: activeSection === 'checkout' }]"
+          @click="activeSection = 'checkout'"
+        >
+          Checkout
         </button>
         <button
           type="button"
@@ -697,6 +762,75 @@ watch(
         </div>
       </section>
 
+      <form
+        v-else-if="activeSection === 'checkout'"
+        class="panel section-panel"
+        @submit.prevent="saveCheckoutSettings"
+      >
+        <div class="section-copy">
+          <p class="eyebrow">Checkout</p>
+          <h2>Konfirmasi pembayaran dan tujuan WhatsApp</h2>
+          <p class="subcopy">
+            Atur nomor WhatsApp yang menerima konfirmasi pembayaran dan label tombol yang muncul di halaman order.
+          </p>
+        </div>
+
+        <div v-if="loadingSettings && !settingsLoaded" class="inner-loading">Memuat pengaturan checkout...</div>
+
+        <div v-else class="split-layout">
+          <div class="form-grid">
+            <label class="field field-wide">
+              <span>Nomor WhatsApp tujuan</span>
+              <input
+                v-model="checkoutWhatsappNumberInput"
+                type="text"
+                inputmode="numeric"
+                placeholder="Contoh: 628123456789"
+              />
+            </label>
+
+            <label class="field field-wide">
+              <span>Label tombol WhatsApp</span>
+              <input
+                v-model="checkoutWhatsappButtonLabelInput"
+                type="text"
+                placeholder="Misalnya: Konfirmasi via WhatsApp"
+              />
+            </label>
+
+            <div class="field field-wide note-box">
+              <strong>Yang akan terjadi di halaman order</strong>
+              <p>
+                Customer akan melihat tombol WhatsApp dengan pesan terisi otomatis. Nomor ini diprioritaskan dari
+                pengaturan storefront Anda, jadi tidak tergantung teks mentah dari payload order.
+              </p>
+            </div>
+          </div>
+
+          <aside class="preview-card">
+            <p class="stat-label">Preview checkout</p>
+            <strong>{{ checkoutWhatsappNumberInput.trim() || 'Nomor WhatsApp belum diisi' }}</strong>
+            <p>Tombol konfirmasi pembayaran akan mengarah ke tautan `wa.me` dengan pesan yang sudah terisi.</p>
+            <button
+              type="button"
+              class="preview-btn"
+              :style="{ backgroundColor: previewButtonColor, borderColor: previewButtonColor, color: previewButtonInk }"
+            >
+              {{ checkoutWhatsappButtonLabelInput.trim() || 'Konfirmasi via WhatsApp' }}
+            </button>
+          </aside>
+        </div>
+
+        <div class="form-actions">
+          <p v-if="checkoutError" class="error-text">{{ checkoutError }}</p>
+          <p v-else-if="checkoutSaved" class="success-text">{{ checkoutSaved }}</p>
+
+          <button class="primary-btn" :disabled="checkoutSaving">
+            {{ checkoutSaving ? 'Menyimpan...' : 'Simpan Checkout' }}
+          </button>
+        </div>
+      </form>
+
       <form v-else class="panel section-panel" @submit.prevent="saveAdsSettings">
         <div class="section-copy">
           <p class="eyebrow">Ads Tracking</p>
@@ -865,7 +999,7 @@ watch(
 
 .overview-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
 

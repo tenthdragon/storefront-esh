@@ -67,6 +67,10 @@ export async function updateStorefrontSettings(payload: {
     buttonColor?: string
     priceLabelColor?: string
   }
+  checkout?: {
+    whatsappNumber?: string
+    whatsappButtonLabel?: string
+  }
   analytics?: {
     meta?: {
       enabled?: boolean

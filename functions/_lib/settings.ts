@@ -5,6 +5,7 @@ import type {
   StorefrontBranding,
   StorefrontHero,
   StorefrontCatalogSection,
+  StorefrontCheckoutSettings,
   StorefrontEnv,
   StorefrontMetaAnalyticsSettings,
   StorefrontPublicSettings,
@@ -37,6 +38,10 @@ function createDefaultSettings(): StorefrontSettings {
     theme: {
       buttonColor: '#b85c38',
       priceLabelColor: '#1f1b16',
+    },
+    checkout: {
+      whatsappNumber: '',
+      whatsappButtonLabel: 'Konfirmasi via WhatsApp',
     },
     analytics: {
       meta: {
@@ -79,6 +84,7 @@ function normalizeSettings(value: unknown): StorefrontSettings {
   const hero = normalizeHero(candidate.hero, defaults.hero)
   const sections = normalizeSections(candidate.sections, defaults.sections)
   const theme = normalizeTheme(candidate.theme, defaults.theme)
+  const checkout = normalizeCheckout(candidate.checkout, defaults.checkout)
   const analytics = normalizeAnalytics(candidate.analytics, defaults.analytics)
 
   return {
@@ -89,6 +95,7 @@ function normalizeSettings(value: unknown): StorefrontSettings {
     hero,
     sections,
     theme,
+    checkout,
     analytics,
   }
 }
@@ -171,6 +178,22 @@ function normalizeTheme(value: unknown, defaults: StorefrontTheme): StorefrontTh
     priceLabelColor: typeof candidate.priceLabelColor === 'string'
       ? normalizeHexColor(candidate.priceLabelColor, defaults.priceLabelColor)
       : defaults.priceLabelColor,
+  }
+}
+
+function normalizeCheckout(value: unknown, defaults: StorefrontCheckoutSettings): StorefrontCheckoutSettings {
+  if (!value || typeof value !== 'object') {
+    return defaults
+  }
+
+  const candidate = value as Partial<StorefrontCheckoutSettings>
+  return {
+    whatsappNumber: typeof candidate.whatsappNumber === 'string'
+      ? sanitizeLabel(candidate.whatsappNumber)
+      : defaults.whatsappNumber,
+    whatsappButtonLabel: typeof candidate.whatsappButtonLabel === 'string'
+      ? sanitizeLabel(candidate.whatsappButtonLabel)
+      : defaults.whatsappButtonLabel,
   }
 }
 
@@ -260,6 +283,7 @@ export function toPublicSettings(settings: StorefrontSettings): StorefrontPublic
     hero: settings.hero,
     sections: settings.sections,
     theme: settings.theme,
+    checkout: settings.checkout,
     analytics: settings.analytics,
   }
 }
@@ -309,6 +333,8 @@ export async function setPresentation(
     catalogTitle?: string
     buttonColor?: string
     priceLabelColor?: string
+    checkoutWhatsappNumber?: string
+    checkoutWhatsappButtonLabel?: string
     metaEnabled?: boolean
     metaPixelId?: string
     metaTrackViewContent?: boolean
@@ -336,6 +362,9 @@ export async function setPresentation(
     },
     theme: {
       ...settings.theme,
+    },
+    checkout: {
+      ...settings.checkout,
     },
     analytics: {
       ...settings.analytics,
@@ -371,6 +400,14 @@ export async function setPresentation(
 
   if (typeof values.priceLabelColor === 'string') {
     nextSettings.theme.priceLabelColor = normalizeHexColor(values.priceLabelColor, settings.theme.priceLabelColor)
+  }
+
+  if (typeof values.checkoutWhatsappNumber === 'string') {
+    nextSettings.checkout.whatsappNumber = sanitizeLabel(values.checkoutWhatsappNumber)
+  }
+
+  if (typeof values.checkoutWhatsappButtonLabel === 'string') {
+    nextSettings.checkout.whatsappButtonLabel = sanitizeLabel(values.checkoutWhatsappButtonLabel)
   }
 
   if (typeof values.metaEnabled === 'boolean') {

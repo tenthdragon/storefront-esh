@@ -34,6 +34,11 @@ export interface StorefrontTheme {
   priceLabelColor: string
 }
 
+export interface StorefrontCheckoutSettings {
+  whatsappNumber: string
+  whatsappButtonLabel: string
+}
+
 export type MetaPurchaseTrigger = 'checkout_success' | 'order_paid'
 
 export interface StorefrontMetaAnalyticsSettings {
@@ -58,6 +63,7 @@ export interface StorefrontSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  checkout: StorefrontCheckoutSettings
   analytics: StorefrontAnalyticsSettings
 }
 
@@ -66,6 +72,7 @@ export interface StorefrontPublicSettings {
   hero: StorefrontHero
   sections: StorefrontSections
   theme: StorefrontTheme
+  checkout: StorefrontCheckoutSettings
   analytics: StorefrontAnalyticsSettings
 }
 
