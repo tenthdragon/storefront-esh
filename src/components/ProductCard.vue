@@ -179,7 +179,7 @@ function cardTone(item: Item) {
 }
 
 .price-text {
-  color: var(--sf-price-ink);
+  color: var(--sf-price-bg);
   font-size: 13px;
   letter-spacing: -0.01em;
   text-transform: none;
