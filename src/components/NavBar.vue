@@ -116,7 +116,7 @@ onMounted(() => cart.fetchCart())
 .nav-pill.router-link-active {
   color: var(--sf-ink);
   border-color: var(--sf-ink);
-  background: var(--sf-bg-card);
+  background: var(--sf-accent-wash);
 }
 
 .cart-btn {

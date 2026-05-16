@@ -442,7 +442,7 @@ function normalizePlainDescription(description?: string) {
   grid-area: desc;
   display: grid;
   gap: 14px;
-  color: var(--sf-ink-soft);
+  color: var(--sf-ink);
   font-size: 16px;
   line-height: 1.7;
   max-width: 62ch;

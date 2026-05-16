@@ -24,8 +24,8 @@ onMounted(() => {
 @import url('https://fonts.bunny.net/css?family=geist:300,400,500,600,700|jetbrains-mono:400,500');
 
 :root {
-  --sf-bg: #faf7f2;
-  --sf-bg-card: #ffffff;
+  --sf-bg: #ffffff;
+  --sf-bg-card: #faf7f2;
   --sf-ink: #1f1b16;
   --sf-ink-soft: #6b6259;
   --sf-ink-muted: #a39989;
