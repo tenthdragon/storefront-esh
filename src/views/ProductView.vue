@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { getProduct, getBundle } from '@/api/catalog'
 import { useCartStore } from '@/stores/cart'
 import { useAnalyticsStore } from '@/stores/analytics'
 import type { Product, Bundle, ProductVariant } from '@/types'
 
 const route = useRoute()
-const router = useRouter()
 const cart = useCartStore()
 const analytics = useAnalyticsStore()
 
@@ -21,6 +20,7 @@ const quantity = ref(1)
 const loading = ref(false)
 const addingToCart = ref(false)
 const error = ref<string | null>(null)
+const cartNotice = ref<string | null>(null)
 
 const productCardEl = ref<HTMLElement | null>(null)
 const isCardVisible = ref(true)
@@ -50,6 +50,7 @@ async function loadItem() {
     product.value = null
     bundle.value = null
     selectedVariant.value = null
+    cartNotice.value = null
 
     if (isBundle.value) {
       bundle.value = await getBundle(slug.value)
@@ -122,6 +123,8 @@ function sleep(ms: number) {
 
 async function addToCart() {
   addingToCart.value = true
+  error.value = null
+  cartNotice.value = null
   try {
     if (isBundle.value && bundle.value) {
       const browserEventId = analytics.fireMetaBrowserAddToCartForBundle(bundle.value, quantity.value)
@@ -150,8 +153,8 @@ async function addToCart() {
         })
       }
     }
-    await sleep(450)
-    router.push('/cart')
+    await sleep(250)
+    cartNotice.value = 'Item berhasil ditambahkan ke keranjang.'
   } catch (e) {
     error.value = (e as Error).message
   } finally {
@@ -263,6 +266,11 @@ watch(
         >
           {{ addingToCart ? 'Menambahkan...' : 'Tambah ke Keranjang' }}
         </button>
+
+        <div v-if="cartNotice" class="cart-notice">
+          <span>{{ cartNotice }}</span>
+          <RouterLink to="/cart" class="cart-notice-link">Lihat Keranjang</RouterLink>
+        </div>
       </aside>
 
       <div v-if="currentRichDescription || currentDescription" class="description">
@@ -515,6 +523,30 @@ watch(
 .btn-cart:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.cart-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--sf-line);
+  background: #fffdf9;
+  padding: 14px 16px;
+  font-size: 14px;
+  color: var(--sf-ink-soft);
+}
+
+.cart-notice-link {
+  flex: 0 0 auto;
+  color: var(--sf-accent-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cart-notice-link:hover {
+  text-decoration: underline;
 }
 
 .description {
