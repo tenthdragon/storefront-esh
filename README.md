@@ -64,10 +64,37 @@ Model yang disarankan:
    - `VITE_SCALEV_STORE_UNIQUE_ID`
    - `VITE_SCALEV_STOREFRONT_API_KEY`
 3. Jalankan `npm install`
-4. Jalankan `npm run dev`
-5. Saat siap production, buat Pages project baru dengan GitHub integration.
-6. Tambahkan env vars, secrets, dan KV binding di Cloudflare.
-7. Push ke `main` untuk deploy production.
+4. Jika ini adalah repo hasil duplikasi untuk store baru, jalankan bootstrap:
+
+```bash
+npm run bootstrap:store -- --store-slug army-alghifari --kv-id your_kv_namespace_id
+```
+
+5. Jalankan `npm run dev`
+6. Saat siap production, buat Pages project baru dengan GitHub integration.
+7. Tambahkan env vars, secrets, dan KV binding di Cloudflare.
+8. Push ke `main` untuk deploy production.
+
+## Bootstrap Store Baru
+
+Perintah ini dibuat agar repo duplikat bisa langsung dipindahkan ke identitas store baru tanpa edit manual `wrangler.jsonc`.
+
+Contoh:
+
+```bash
+npm run bootstrap:store -- --store-slug army-alghifari --kv-id 1234567890abcdef1234567890abcdef
+```
+
+Flag yang tersedia:
+
+- `--store-slug` wajib, harus `kebab-case`
+- `--pages-project` opsional, default `storefront-{store_slug}`
+- `--kv-id` opsional, default placeholder `your_kv_namespace_id`
+- `--compatibility-date` opsional, default mengambil nilai yang ada sekarang
+
+File yang diubah:
+
+- [wrangler.jsonc](/Users/armyalghifari/Documents/Github/storefront/wrangler.jsonc)
 
 ## Naming Convention
 
@@ -94,6 +121,7 @@ Dokumen lengkapnya ada di [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Docu
 - Simpan env vars dan secrets production di Cloudflare Pages, bukan di git.
 - KV harus dibuat per store, jangan dipakai bersama untuk store yang berbeda.
 - `npm run deploy` memang diblok. Production release hanya boleh lewat GitHub ke `main`.
+- Setelah repo diduplikasi untuk store baru, jalankan `npm run bootstrap:store` sebelum setup Cloudflare.
 
 ## Prompt Handoff untuk LLM Lain
 

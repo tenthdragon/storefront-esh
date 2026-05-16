@@ -19,6 +19,7 @@ Isi dokumen ini dulu saat akan membuat storefront baru dari starter ini.
 - Cloudflare account name:
 - Pages project name:
 - KV namespace name:
+- KV namespace id:
 - Custom domain:
 
 ## Scalev

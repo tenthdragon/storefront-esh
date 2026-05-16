@@ -52,14 +52,20 @@ LLM harus:
 
 LLM harus:
 
-1. copy `.env.example` ke `.env`
-2. isi:
+1. jalankan bootstrap store:
+
+```bash
+npm run bootstrap:store -- --store-slug <store-slug> --kv-id <kv-namespace-id>
+```
+
+2. copy `.env.example` ke `.env`
+3. isi:
    - `VITE_SCALEV_API_BASE=https://api.scalev.com`
    - `VITE_SCALEV_STORE_UNIQUE_ID`
    - `VITE_SCALEV_STOREFRONT_API_KEY`
-3. jalankan `npm install`
-4. jalankan `npm run build`
-5. jalankan `npm run dev` bila perlu verifikasi lokal
+4. jalankan `npm install`
+5. jalankan `npm run build`
+6. jalankan `npm run dev` bila perlu verifikasi lokal
 
 ## Step 4: Buat Cloudflare Resources
 
@@ -88,6 +94,7 @@ Catatan:
 - env vars harus diisi untuk environment production
 - kalau preview dipakai, isi preview juga agar branch preview tidak error
 - jangan simpan secret production di git
+- bila KV namespace belum ada saat bootstrap awal, LLM boleh memakai placeholder lebih dulu lalu mengganti `wrangler.jsonc` setelah KV dibuat
 
 ## Step 5: Samakan Repo dengan Cloudflare
 
