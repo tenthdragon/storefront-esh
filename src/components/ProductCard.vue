@@ -7,6 +7,12 @@ const hasPriceRange = computed(() => {
   const { min, max } = props.item.price_range
   return parseFloat(max) > parseFloat(min)
 })
+const summary = computed(() =>
+  props.item.description
+    ?.replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() ?? '',
+)
 
 function formatPrice(price: string) {
   return new Intl.NumberFormat('id-ID', {
@@ -53,6 +59,7 @@ function cardTone(item: Item) {
 
     <div class="card-meta">
       <p class="card-title">{{ item.name }}</p>
+      <p class="card-summary">{{ summary }}</p>
     </div>
 
     <div class="card-footer">
@@ -169,6 +176,8 @@ function cardTone(item: Item) {
   padding: 16px 16px 18px;
   flex: 1;
   min-width: 0;
+  display: grid;
+  gap: 8px;
 }
 
 .card-title {
@@ -179,10 +188,23 @@ function cardTone(item: Item) {
   letter-spacing: -0.015em;
   color: var(--sf-ink);
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: break-word;
+}
+
+.card-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--sf-ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  min-height: calc(1.55em * 2);
 }
 
 .card-footer {
