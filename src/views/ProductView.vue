@@ -120,20 +120,30 @@ async function addToCart() {
   addingToCart.value = true
   try {
     if (isBundle.value && bundle.value) {
+      const browserEventId = analytics.fireMetaBrowserAddToCartForBundle(bundle.value, quantity.value)
       await cart.addItem({
         type: 'bundle_price_option',
         bundle_price_option_id: bundle.value.id,
         quantity: quantity.value,
       })
-      await analytics.trackMetaAddToCartForBundle(bundle.value, quantity.value)
+      await analytics.trackMetaAddToCartForBundle(bundle.value, quantity.value, {
+        eventId: browserEventId ?? undefined,
+        skipBrowser: !!browserEventId,
+      })
     } else if (selectedVariant.value) {
+      const browserEventId = product.value
+        ? analytics.fireMetaBrowserAddToCartForProduct(product.value, selectedVariant.value, quantity.value)
+        : null
       await cart.addItem({
         type: 'variant',
         variant_id: selectedVariant.value.id,
         quantity: quantity.value,
       })
       if (product.value) {
-        await analytics.trackMetaAddToCartForProduct(product.value, selectedVariant.value, quantity.value)
+        await analytics.trackMetaAddToCartForProduct(product.value, selectedVariant.value, quantity.value, {
+          eventId: browserEventId ?? undefined,
+          skipBrowser: !!browserEventId,
+        })
       }
     }
     router.push('/cart')

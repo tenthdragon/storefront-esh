@@ -49,6 +49,11 @@ interface PendingPurchaseContext {
 
 type MetaBrowserEventName = 'PageView' | 'ViewContent' | 'AddToCart' | 'InitiateCheckout' | 'Purchase'
 
+interface MetaEventSendOptions {
+  eventId?: string
+  skipBrowser?: boolean
+}
+
 const META_SCRIPT_ID = 'storefront-meta-pixel'
 const META_SENT_EVENTS_KEY = 'sf.meta.sent-events'
 const META_PENDING_PURCHASE_PREFIX = 'sf.meta.pending-purchase:'
@@ -495,7 +500,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     items: NormalizedAnalyticsItem[]
     customer?: AnalyticsCustomer
     parameters: Record<string, unknown>
-  }) {
+  }, options: MetaEventSendOptions = {}) {
     if (!metaReady.value || hasSentMetaEvent(input.eventId)) {
       return false
     }
@@ -507,10 +512,12 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       ...input.parameters,
     }
 
-    dispatchMetaBrowserEvent(input.eventName, browserPayload, {
-      pixelId: metaSettings.value.pixelId.trim(),
-      eventId: input.eventId,
-    })
+    if (!options.skipBrowser) {
+      dispatchMetaBrowserEvent(input.eventName, browserPayload, {
+        pixelId: metaSettings.value.pixelId.trim(),
+        eventId: input.eventId,
+      })
+    }
 
     try {
       await postMetaAnalyticsEvent({
@@ -598,14 +605,54 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     })
   }
 
-  async function trackMetaAddToCart(item: CartItem | null, quantityAdded: number) {
+  function fireMetaBrowserAddToCart(items: NormalizedAnalyticsItem[], contentName: string) {
+    if (!metaReady.value || !metaSettings.value.trackAddToCart || !items.length) {
+      return null
+    }
+
+    const eventId = generateEventId('meta_atc')
+    const parameters = buildMetaParameters(items, {
+      contentName,
+      valueOverride: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    })
+
+    syncMetaAttribution()
+    ensureMetaPixel(metaSettings.value.pixelId.trim())
+    dispatchMetaBrowserEvent('AddToCart', parameters, {
+      pixelId: metaSettings.value.pixelId.trim(),
+      eventId,
+    })
+
+    return eventId
+  }
+
+  function fireMetaBrowserAddToCartForProduct(
+    product: Product,
+    variant: ProductVariant | null,
+    quantityAdded: number,
+  ) {
+    const normalized = buildProductVariantAnalyticsItem(product, variant, quantityAdded)
+    return fireMetaBrowserAddToCart([normalized], normalized.name)
+  }
+
+  function fireMetaBrowserAddToCartForBundle(bundle: Bundle, quantityAdded: number) {
+    const normalized = buildBundleAnalyticsItem(bundle, quantityAdded)
+    return fireMetaBrowserAddToCart([normalized], normalized.name)
+  }
+
+  async function trackMetaAddToCart(
+    item: CartItem | null,
+    quantityAdded: number,
+    options: MetaEventSendOptions = {},
+  ) {
     if (!metaSettings.value.trackAddToCart || !item) return false
 
     const normalized = normalizeCartItem(item, quantityAdded)
     if (!normalized) return false
+    const eventId = options.eventId ?? generateEventId('meta_atc')
 
     return sendMetaEvent({
-      eventId: generateEventId('meta_atc'),
+      eventId,
       eventName: 'AddToCart',
       items: [normalized],
       customer: {
@@ -615,20 +662,22 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         contentName: normalized.name,
         valueOverride: normalized.price * quantityAdded,
       }),
-    })
+    }, options)
   }
 
   async function trackMetaAddToCartForProduct(
     product: Product,
     variant: ProductVariant | null,
     quantityAdded: number,
+    options: MetaEventSendOptions = {},
   ) {
     if (!metaSettings.value.trackAddToCart) return false
 
     const normalized = buildProductVariantAnalyticsItem(product, variant, quantityAdded)
+    const eventId = options.eventId ?? generateEventId('meta_atc')
 
     return sendMetaEvent({
-      eventId: generateEventId('meta_atc'),
+      eventId,
       eventName: 'AddToCart',
       items: [normalized],
       customer: {
@@ -638,16 +687,21 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         contentName: normalized.name,
         valueOverride: normalized.price * quantityAdded,
       }),
-    })
+    }, options)
   }
 
-  async function trackMetaAddToCartForBundle(bundle: Bundle, quantityAdded: number) {
+  async function trackMetaAddToCartForBundle(
+    bundle: Bundle,
+    quantityAdded: number,
+    options: MetaEventSendOptions = {},
+  ) {
     if (!metaSettings.value.trackAddToCart) return false
 
     const normalized = buildBundleAnalyticsItem(bundle, quantityAdded)
+    const eventId = options.eventId ?? generateEventId('meta_atc')
 
     return sendMetaEvent({
-      eventId: generateEventId('meta_atc'),
+      eventId,
       eventName: 'AddToCart',
       items: [normalized],
       customer: {
@@ -657,7 +711,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         contentName: normalized.name,
         valueOverride: normalized.price * quantityAdded,
       }),
-    })
+    }, options)
   }
 
   async function trackMetaInitiateCheckout(items: CartItem[], subtotal: number) {
@@ -775,6 +829,8 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     handleOrderPagePurchase,
     registerCheckoutPurchase,
     shouldHandlePurchaseTrigger,
+    fireMetaBrowserAddToCartForBundle,
+    fireMetaBrowserAddToCartForProduct,
     trackMetaAddToCart,
     trackMetaAddToCartForBundle,
     trackMetaAddToCartForProduct,
