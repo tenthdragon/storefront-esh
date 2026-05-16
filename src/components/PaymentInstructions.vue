@@ -51,6 +51,7 @@ const paymentAccounts = computed(() => props.order.store?.payment_accounts ?? []
 const productTotal = computed(() => toNumber(props.order.product_price) - toNumber(props.order.product_discount))
 const shippingTotal = computed(() => toNumber(props.order.shipping_cost) - toNumber(props.order.shipping_discount))
 const uniqueCodeDiscount = computed(() => Math.max(0, toNumber(props.order.unique_code_discount)))
+const isManualBankTransfer = computed(() => normalizePaymentMethod(props.order.payment_method) === 'bank_transfer')
 const shouldShowPayButton = computed(() =>
   Boolean(props.order.payment_url) && normalizePaymentMethod(props.order.payment_method) !== 'bank_transfer',
 )
@@ -101,7 +102,7 @@ const showConfirmationSection = computed(() =>
       <a :href="order.payment_url" target="_blank" rel="noreferrer noopener" class="btn-pay">Bayar Sekarang</a>
     </div>
 
-    <div v-if="paymentAccounts.length" class="bank-accounts">
+    <div v-if="isManualBankTransfer && paymentAccounts.length" class="bank-accounts">
       <p class="label">Transfer ke</p>
       <div v-for="account in paymentAccounts" :key="account.id ?? account.account_number" class="account">
         <strong>{{ getBankName(account) }}</strong>

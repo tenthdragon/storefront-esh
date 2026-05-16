@@ -130,6 +130,43 @@ function paymentMethodLabel(method: PaymentMethodOption) {
   return method.label || method.code
 }
 
+function getPaymentMethodMeta(method: PaymentMethodOption) {
+  switch (method.code) {
+    case 'qris':
+      return {
+        badge: 'QR',
+        title: 'QRIS',
+        description: 'Scan QR dari mobile banking atau e-wallet Anda.',
+      }
+    case 'invoice':
+      return {
+        badge: 'VA',
+        title: 'Virtual Account / GoPay / DANA',
+        description: 'Anda akan diarahkan ke halaman pembayaran resmi Scalev.',
+      }
+    case 'bank_transfer':
+      return {
+        badge: 'TF',
+        title: 'Transfer Bank',
+        description: 'Transfer manual ke rekening yang ditampilkan setelah order dibuat.',
+      }
+    case 'cod':
+      return {
+        badge: 'COD',
+        title: 'Bayar di Tempat',
+        description: 'Bayar ketika pesanan tiba di lokasi Anda.',
+      }
+    default:
+      return {
+        badge: method.code.slice(0, 3).toUpperCase(),
+        title: paymentMethodLabel(method),
+        description: method.requires_redirect
+          ? 'Lanjutkan ke halaman pembayaran resmi setelah order dibuat.'
+          : 'Metode pembayaran ini tersedia untuk checkout Anda.',
+      }
+  }
+}
+
 function buildDigitalSummary(): Summary {
   return {
     product_price: cart.subtotal,
@@ -352,13 +389,29 @@ function goBack() {
       </div>
       <div class="field">
         <label>Metode Pembayaran</label>
-        <select v-model="form.payment_method" :disabled="loadingPaymentMethods || !paymentMethods.length">
-          <option v-if="loadingPaymentMethods" value="">Memuat metode pembayaran...</option>
-          <option v-else-if="!paymentMethods.length" value="">Tidak ada metode pembayaran tersedia</option>
-          <option v-for="method in paymentMethods" :key="method.code" :value="method.code">
-            {{ paymentMethodLabel(method) }}
-          </option>
-        </select>
+        <div v-if="loadingPaymentMethods" class="empty">Memuat metode pembayaran...</div>
+        <div v-else-if="!paymentMethods.length" class="empty">Tidak ada metode pembayaran tersedia.</div>
+        <div v-else class="payment-method-grid">
+          <label
+            v-for="method in paymentMethods"
+            :key="method.code"
+            :class="['payment-method-card', { active: form.payment_method === method.code }]"
+          >
+            <input
+              v-model="form.payment_method"
+              class="payment-method-input"
+              type="radio"
+              name="payment_method"
+              :value="method.code"
+            />
+            <span class="payment-method-radio" aria-hidden="true" />
+            <span class="payment-method-badge">{{ getPaymentMethodMeta(method).badge }}</span>
+            <span class="payment-method-copy">
+              <strong>{{ getPaymentMethodMeta(method).title }}</strong>
+              <small>{{ getPaymentMethodMeta(method).description }}</small>
+            </span>
+          </label>
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn-outline" type="button" @click="goBack">Kembali</button>
@@ -515,6 +568,83 @@ h1 {
 .shipping-opt.active {
   border-color: var(--sf-accent);
   background: var(--sf-accent-wash);
+}
+
+.payment-method-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-method-card {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--sf-line-strong);
+  background: #fffdf9;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.payment-method-card:hover {
+  transform: translateY(-1px);
+}
+
+.payment-method-card.active {
+  border-color: var(--sf-accent);
+  background: var(--sf-accent-wash);
+}
+
+.payment-method-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.payment-method-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid var(--sf-line-strong);
+  background: #fff;
+  box-shadow: inset 0 0 0 4px #fff;
+}
+
+.payment-method-card.active .payment-method-radio {
+  border-color: var(--sf-accent);
+  background: var(--sf-accent);
+}
+
+.payment-method-badge {
+  min-width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sf-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #eff4ff;
+  color: var(--sf-accent-strong);
+}
+
+.payment-method-copy {
+  display: grid;
+  gap: 3px;
+}
+
+.payment-method-copy strong {
+  font-size: 1rem;
+  color: var(--sf-ink);
+}
+
+.payment-method-copy small {
+  color: var(--sf-ink-soft);
+  line-height: 1.4;
 }
 
 .etd {
