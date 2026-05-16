@@ -544,11 +544,25 @@ function isPaidStatus(status?: string | null) {
   return normalized === 'paid' || normalized === 'settled' || normalized === 'success'
 }
 
+function getInitialRoutePath() {
+  const win = getBrowserWindow()
+  if (!win) return null
+  return `${win.location.pathname}${win.location.search}${win.location.hash}`
+}
+
+function getInitialPageViewSignature() {
+  const win = getBrowserWindow()
+  const pixelId = win?.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__
+  if (!pixelId) return null
+  const path = getInitialRoutePath()
+  return path ? `${pixelId}::${path}` : null
+}
+
 export const useAnalyticsStore = defineStore('analytics', () => {
   const storefrontSettings = useStorefrontSettingsStore()
   const bootstrapped = ref(false)
   const bootstrappedPixelId = ref<string | null>(getBrowserWindow()?.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ ?? null)
-  const lastTrackedPageViewSignature = ref<string | null>(null)
+  const lastTrackedPageViewSignature = ref<string | null>(getInitialPageViewSignature())
 
   const metaSettings = computed(() => storefrontSettings.settings.analytics.meta)
   const metaReady = computed(() =>
@@ -643,9 +657,19 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
     void router.isReady().then(() => {
       syncMetaAttribution()
-      if (activeMetaPixelId.value) {
-        void trackRoutePageView(router.currentRoute.value.fullPath, activeMetaPixelId.value)
+      const pixelId = activeMetaPixelId.value
+      if (!pixelId) return
+
+      const initialPath = router.currentRoute.value.fullPath
+      const initialSignature = `${pixelId}::${initialPath}`
+      const edgeFiredPageView = !!getBrowserWindow()?.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__
+
+      if (edgeFiredPageView) {
+        lastTrackedPageViewSignature.value = initialSignature
+        return
       }
+
+      void trackRoutePageView(initialPath, pixelId)
     })
 
     router.afterEach((to) => {
