@@ -107,7 +107,6 @@ const previewPriceLabelColor = computed(() => {
 })
 
 const previewButtonInk = computed(() => getContrastPreviewColor(previewButtonColor.value))
-const previewPriceLabelInk = computed(() => getContrastPreviewColor(previewPriceLabelColor.value))
 
 function syncPresentationForm() {
   storeNameInput.value = settings.value.branding.storeName
@@ -390,7 +389,7 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
           </label>
 
           <label class="field">
-            <span>Warna label harga</span>
+            <span>Warna tulisan harga</span>
             <div class="color-field">
               <input v-model="priceLabelColorInput" type="color" class="color-picker" />
               <input
@@ -421,7 +420,7 @@ watch([storeNameInput, heroTitleInput, heroSubtitleInput, showCatalogHeading, ca
             </button>
             <span
               class="preview-price-tag"
-              :style="{ backgroundColor: previewPriceLabelColor, borderColor: previewPriceLabelColor, color: previewPriceLabelInk }"
+              :style="{ color: previewPriceLabelColor }"
             >
               Rp195.000
             </span>
@@ -692,15 +691,11 @@ h1 {
 
 .preview-price-tag {
   justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.45rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid;
-  color: #fff;
+  display: inline-block;
   font-family: var(--sf-mono);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: -0.01em;
+  font-weight: 500;
 }
 
 .color-field {
