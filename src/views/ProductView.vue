@@ -223,6 +223,7 @@ function normalizePlainDescription(description?: string) {
 <style scoped>
 .product-view {
   padding-top: 34px;
+  overflow-x: clip;
 }
 
 .back-link {
@@ -266,6 +267,8 @@ function normalizePlainDescription(description?: string) {
   line-height: 1.03;
   letter-spacing: -0.045em;
   font-weight: 500;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .product-card {
@@ -278,6 +281,7 @@ function normalizePlainDescription(description?: string) {
   padding: 20px;
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .card-media {
@@ -446,6 +450,8 @@ function normalizePlainDescription(description?: string) {
   font-size: 16px;
   line-height: 1.7;
   max-width: 62ch;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .description-copy {
@@ -455,6 +461,26 @@ function normalizePlainDescription(description?: string) {
 
 .description :deep(> div > * + *) {
   margin-top: 0.9rem;
+}
+
+.description :deep(img),
+.description :deep(video),
+.description :deep(iframe) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.description :deep(pre),
+.description :deep(code) {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.description :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .description :deep(ul),
@@ -472,7 +498,7 @@ function normalizePlainDescription(description?: string) {
 
 @media (max-width: 900px) {
   .detail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'title'
       'card'
