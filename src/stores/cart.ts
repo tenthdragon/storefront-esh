@@ -16,7 +16,21 @@ export const useCartStore = defineStore('cart', () => {
     cart.value?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0,
   )
 
-  const subtotal = computed(() => cart.value?.subtotal ?? 0)
+  const subtotal = computed(() => {
+    const rawSubtotal = cart.value?.subtotal ?? cart.value?.total
+    const numericSubtotal = Number(rawSubtotal)
+    if (Number.isFinite(numericSubtotal) && numericSubtotal > 0) {
+      return numericSubtotal
+    }
+
+    return cart.value?.items.reduce((sum, item) => {
+      const lineSubtotal = Number(item.line_subtotal ?? 0)
+      if (Number.isFinite(lineSubtotal) && lineSubtotal > 0) {
+        return sum + lineSubtotal
+      }
+      return sum + (Number(item.price ?? 0) * item.quantity)
+    }, 0) ?? 0
+  })
 
   async function fetchCart() {
     loading.value = true

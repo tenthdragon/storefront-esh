@@ -4,6 +4,7 @@ export interface Item {
   name: string
   description?: string
   entity_type: 'product' | 'bundle_price_option'
+  item_type?: 'physical' | 'digital' | 'course'
   images: string[]
   price_range: { min: string; max: string }
   in_stock: boolean
@@ -80,6 +81,7 @@ export interface AdminSession {
 export interface ProductVariant {
   id: number
   unique_id?: string
+  item_type?: 'physical' | 'digital' | 'course'
   name: string
   fullname?: string
   price: number | string
@@ -95,6 +97,7 @@ export interface Product {
   name: string
   description?: string
   rich_description?: string
+  item_type?: 'physical' | 'digital' | 'course'
   images: string[]
   variants: ProductVariant[]
 }
@@ -105,6 +108,7 @@ export interface Bundle {
   name: string
   description?: string
   rich_description?: string
+  item_type?: 'physical' | 'digital' | 'course'
   images: string[]
   price: number | string
   original_price?: number
@@ -127,6 +131,7 @@ export interface CartBundleLine {
 export interface CartItem {
   id: number
   type: 'variant' | 'bundle_price_option'
+  item_type?: 'physical' | 'digital' | 'course'
   name: string
   image?: string
   price: number | string
@@ -147,7 +152,8 @@ export interface CartItem {
 
 export interface Cart {
   items: CartItem[]
-  subtotal: number
+  subtotal?: number | string
+  total?: number | string
 }
 
 export interface Location {

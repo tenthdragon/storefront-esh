@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { getShippingOptions, getCheckoutSummary, submitCheckout } from '@/api/checkout'
 import LocationPicker from '@/components/LocationPicker.vue'
-import type { Location, ShippingOption, Summary } from '@/types'
+import type { CartItem, Location, ShippingOption, Summary } from '@/types'
+
+type CheckoutStep = 'customer' | 'shipping' | 'confirm'
 
 const router = useRouter()
 const cart = useCartStore()
@@ -18,7 +20,7 @@ onMounted(async () => {
   }
 })
 
-const step = ref(1)
+const currentStep = ref<CheckoutStep>('customer')
 const submitting = ref(false)
 const error = ref<string | null>(null)
 
@@ -38,17 +40,67 @@ const summary = ref<Summary | null>(null)
 const loadingShipping = ref(false)
 const loadingSummary = ref(false)
 
+const cartItems = computed(() => cart.cart?.items ?? [])
+const needsShipping = computed(() =>
+  cartItems.value.some((item) => item.item_type === 'physical'),
+)
+const checkoutIntro = computed(() =>
+  needsShipping.value
+    ? 'Lengkapi informasi pengiriman, pilih layanan kurir, lalu konfirmasi pembayaran.'
+    : 'Lengkapi data pelanggan untuk pengiriman produk digital. Untuk checkout digital, kami hanya membutuhkan nama, no. HP, dan email.',
+)
+const checkoutSteps = computed(() =>
+  needsShipping.value
+    ? [
+        { key: 'customer' as const, label: '1. Pengiriman' },
+        { key: 'shipping' as const, label: '2. Kurir' },
+        { key: 'confirm' as const, label: '3. Konfirmasi' },
+      ]
+    : [
+        { key: 'customer' as const, label: '1. Pelanggan' },
+        { key: 'confirm' as const, label: '2. Konfirmasi' },
+      ],
+)
+const currentStepIndex = computed(() =>
+  checkoutSteps.value.findIndex((step) => step.key === currentStep.value),
+)
+const customerSubmitLabel = computed(() => {
+  if (needsShipping.value) {
+    return loadingShipping.value ? 'Memuat...' : 'Pilih Kurir'
+  }
+
+  return 'Lanjutkan'
+})
+
 function onLocationSelect(loc: Location, postalCode: string) {
   selectedLocation.value = loc
   selectedPostalCode.value = postalCode
 }
 
-async function goToStep2() {
+function buildDigitalSummary(): Summary {
+  return {
+    product_price: cart.subtotal,
+    product_discount: 0,
+    shipping_cost: 0,
+    shipping_discount: 0,
+    gross_revenue: cart.subtotal,
+  }
+}
+
+async function continueFromCustomerStep() {
+  error.value = null
+
+  if (!needsShipping.value) {
+    summary.value = buildDigitalSummary()
+    currentStep.value = 'confirm'
+    return
+  }
+
   if (!selectedLocation.value || !selectedPostalCode.value) {
     error.value = 'Pilih lokasi pengiriman terlebih dahulu.'
     return
   }
-  error.value = null
+
   loadingShipping.value = true
   try {
     shippingOptions.value = await getShippingOptions({
@@ -58,7 +110,7 @@ async function goToStep2() {
     if (shippingOptions.value.length) {
       selectedShipping.value = shippingOptions.value[0]
     }
-    step.value = 2
+    currentStep.value = 'shipping'
   } catch (e) {
     error.value = (e as Error).message
   } finally {
@@ -66,7 +118,7 @@ async function goToStep2() {
   }
 }
 
-async function goToStep3() {
+async function goToConfirmationStep() {
   if (!selectedShipping.value || !selectedLocation.value) return
   error.value = null
   loadingSummary.value = true
@@ -77,7 +129,7 @@ async function goToStep3() {
       shipping_courier: selectedShipping.value.courier,
       shipping_service: selectedShipping.value.service,
     })
-    step.value = 3
+    currentStep.value = 'confirm'
   } catch (e) {
     error.value = (e as Error).message
   } finally {
@@ -86,25 +138,32 @@ async function goToStep3() {
 }
 
 async function placeOrder() {
-  if (!selectedLocation.value || !selectedShipping.value) return
+  if (needsShipping.value && (!selectedLocation.value || !selectedShipping.value)) return
+
   error.value = null
   submitting.value = true
   try {
-    const cartItemsSnapshot = cart.cart?.items ? JSON.parse(JSON.stringify(cart.cart.items)) : []
-    const order = await submitCheckout({
+    const cartItemsSnapshot = cart.cart?.items ? JSON.parse(JSON.stringify(cart.cart.items)) as CartItem[] : []
+    const payload = {
       customer_name: form.value.customer_name,
       customer_email: form.value.customer_email,
       customer_phone: form.value.customer_phone,
-      shipping_address: form.value.shipping_address,
-      shipping_province: selectedLocation.value.province ?? '',
-      shipping_city: selectedLocation.value.city ?? '',
-      shipping_subdistrict: selectedLocation.value.name,
-      shipping_postal_code: selectedPostalCode.value,
-      shipping_location_id: selectedLocation.value.id,
-      shipping_courier: selectedShipping.value.courier,
-      shipping_service: selectedShipping.value.service,
       payment_method: form.value.payment_method,
-    })
+      ...(needsShipping.value && selectedLocation.value && selectedShipping.value
+        ? {
+            shipping_address: form.value.shipping_address,
+            shipping_province: selectedLocation.value.province ?? '',
+            shipping_city: selectedLocation.value.city ?? '',
+            shipping_subdistrict: selectedLocation.value.name,
+            shipping_postal_code: selectedPostalCode.value,
+            shipping_location_id: selectedLocation.value.id,
+            shipping_courier: selectedShipping.value.courier,
+            shipping_service: selectedShipping.value.service,
+          }
+        : {}),
+    }
+
+    const order = await submitCheckout(payload)
     void analytics.registerCheckoutPurchase(order, cartItemsSnapshot, {
       name: form.value.customer_name,
       email: form.value.customer_email,
@@ -125,6 +184,17 @@ function formatPrice(price: number) {
     maximumFractionDigits: 0,
   }).format(price)
 }
+
+function goBack() {
+  if (currentStep.value === 'shipping') {
+    currentStep.value = 'customer'
+    return
+  }
+
+  if (currentStep.value === 'confirm') {
+    currentStep.value = needsShipping.value ? 'shipping' : 'customer'
+  }
+}
 </script>
 
 <template>
@@ -132,18 +202,22 @@ function formatPrice(price: number) {
     <header class="page-head">
       <span class="eyebrow">Checkout</span>
       <h1>Selesaikan pesanan Anda</h1>
-      <p>Lengkapi informasi pengiriman, pilih layanan kurir, lalu konfirmasi pembayaran.</p>
+      <p>{{ checkoutIntro }}</p>
     </header>
 
     <div class="steps">
-      <span :class="{ active: step === 1, done: step > 1 }">1. Pengiriman</span>
-      <span :class="{ active: step === 2, done: step > 2 }">2. Kurir</span>
-      <span :class="{ active: step === 3 }">3. Konfirmasi</span>
+      <span
+        v-for="(step, index) in checkoutSteps"
+        :key="step.key"
+        :class="{ active: step.key === currentStep, done: index < currentStepIndex }"
+      >
+        {{ step.label }}
+      </span>
     </div>
 
     <div v-if="error" class="error">{{ error }}</div>
 
-    <form v-if="step === 1" class="panel form" @submit.prevent="goToStep2">
+    <form v-if="currentStep === 'customer'" class="panel form" @submit.prevent="continueFromCustomerStep">
       <div class="field">
         <label>Nama Lengkap</label>
         <input v-model="form.customer_name" required />
@@ -156,20 +230,20 @@ function formatPrice(price: number) {
         <label>No. HP (format: 628xxx)</label>
         <input v-model="form.customer_phone" required />
       </div>
-      <div class="field">
+      <div v-if="needsShipping" class="field">
         <label>Alamat Lengkap</label>
         <textarea v-model="form.shipping_address" rows="3" required />
       </div>
-      <div class="field">
+      <div v-if="needsShipping" class="field">
         <label>Kecamatan / Kota</label>
         <LocationPicker @select="onLocationSelect" />
       </div>
       <button type="submit" class="btn" :disabled="loadingShipping">
-        {{ loadingShipping ? 'Memuat...' : 'Pilih Kurir' }}
+        {{ customerSubmitLabel }}
       </button>
     </form>
 
-    <div v-if="step === 2" class="panel form">
+    <div v-if="currentStep === 'shipping' && needsShipping" class="panel form">
       <div v-if="!shippingOptions.length" class="empty">Tidak ada opsi pengiriman tersedia.</div>
       <div v-else>
         <p class="section-label">Pilih Layanan Pengiriman</p>
@@ -187,21 +261,21 @@ function formatPrice(price: number) {
         </div>
       </div>
       <div class="btn-row">
-        <button class="btn-outline" type="button" @click="step = 1">Kembali</button>
-        <button class="btn" :disabled="!selectedShipping || loadingSummary" type="button" @click="goToStep3">
+        <button class="btn-outline" type="button" @click="goBack">Kembali</button>
+        <button class="btn" :disabled="!selectedShipping || loadingSummary" type="button" @click="goToConfirmationStep">
           {{ loadingSummary ? 'Memuat...' : 'Lihat Ringkasan' }}
         </button>
       </div>
     </div>
 
-    <div v-if="step === 3 && summary" class="panel form">
+    <div v-if="currentStep === 'confirm' && summary" class="panel form">
       <p class="section-label">Ringkasan Pesanan</p>
       <div class="summary-rows">
         <div class="sum-row">
           <span>Produk</span>
           <span>{{ formatPrice(summary.product_price - summary.product_discount) }}</span>
         </div>
-        <div class="sum-row">
+        <div v-if="needsShipping" class="sum-row">
           <span>Ongkir ({{ selectedShipping?.courier }} {{ selectedShipping?.service }})</span>
           <span>{{ formatPrice(summary.shipping_cost - summary.shipping_discount) }}</span>
         </div>
@@ -218,7 +292,7 @@ function formatPrice(price: number) {
         </select>
       </div>
       <div class="btn-row">
-        <button class="btn-outline" type="button" @click="step = 2">Kembali</button>
+        <button class="btn-outline" type="button" @click="goBack">Kembali</button>
         <button class="btn" :disabled="submitting" type="button" @click="placeOrder">
           {{ submitting ? 'Memproses...' : 'Buat Pesanan' }}
         </button>

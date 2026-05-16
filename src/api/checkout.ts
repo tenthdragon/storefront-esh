@@ -45,14 +45,14 @@ export interface CheckoutPayload {
   customer_name: string
   customer_email: string
   customer_phone: string
-  shipping_address: string
-  shipping_province: string
-  shipping_city: string
-  shipping_subdistrict: string
-  shipping_postal_code: string
-  shipping_location_id: number
-  shipping_courier: string
-  shipping_service: string
+  shipping_address?: string
+  shipping_province?: string
+  shipping_city?: string
+  shipping_subdistrict?: string
+  shipping_postal_code?: string
+  shipping_location_id?: number
+  shipping_courier?: string
+  shipping_service?: string
   payment_method: string
 }
 
