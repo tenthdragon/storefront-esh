@@ -10,6 +10,10 @@ function saveGuestToken(token: string) {
   localStorage.setItem('scalev_guest_token', token)
 }
 
+export function clearScalevGuestToken() {
+  localStorage.removeItem('scalev_guest_token')
+}
+
 function createStorefrontHeaders(init: RequestInit = {}) {
   const headers = new Headers(init.headers as HeadersInit)
   headers.set('Accept', 'application/json')
@@ -65,7 +69,8 @@ export async function customerFetch(
 export async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error((err as { message?: string }).message ?? `HTTP ${res.status}`)
+    const parsed = err as { message?: string; error?: string }
+    throw new Error(parsed.message ?? parsed.error ?? `HTTP ${res.status}`)
   }
   return res.json() as Promise<T>
 }

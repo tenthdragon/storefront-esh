@@ -264,9 +264,13 @@ async function placeOrder() {
       email: form.value.customer_email,
       phone: form.value.customer_phone,
     })
+    cart.resetCartSession()
     router.push(`/orders/${order.secret_slug}`)
   } catch (e) {
-    error.value = (e as Error).message
+    const message = (e as Error).message
+    error.value = message === 'Duplicate order.'
+      ? 'Order untuk keranjang ini sudah pernah dibuat. Silakan lanjutkan ke halaman order sebelumnya atau mulai checkout dari keranjang yang baru.'
+      : message
   } finally {
     submitting.value = false
   }

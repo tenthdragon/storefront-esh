@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getCart, addToCart, updateCartItem, removeCartItem } from '@/api/cart'
+import { clearScalevGuestToken } from '@/api/client'
 import type { Cart } from '@/types'
 
 type AddItemPayload =
@@ -80,5 +81,16 @@ export const useCartStore = defineStore('cart', () => {
     }
   }
 
-  return { cart, loading, error, itemCount, subtotal, fetchCart, addItem, updateItem, removeItem }
+  function resetCartSession() {
+    clearScalevGuestToken()
+    cart.value = {
+      items: [],
+      subtotal: 0,
+      total: 0,
+    }
+    error.value = null
+    loading.value = false
+  }
+
+  return { cart, loading, error, itemCount, subtotal, fetchCart, addItem, updateItem, removeItem, resetCartSession }
 })
