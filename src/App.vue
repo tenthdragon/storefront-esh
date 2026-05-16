@@ -1,19 +1,10 @@
 <script setup lang="ts">
 import NavBar from '@/components/NavBar.vue'
-import { useAnalyticsStore } from '@/stores/analytics'
 import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
-import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
 
 const storefrontSettings = useStorefrontSettingsStore()
-const analytics = useAnalyticsStore()
-const router = useRouter()
 const appTheme = computed(() => storefrontSettings.themeVars)
-
-onMounted(() => {
-  analytics.bootstrap(router)
-  void storefrontSettings.fetchSettings()
-})
 </script>
 
 <template>
