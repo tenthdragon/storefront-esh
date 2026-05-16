@@ -17,6 +17,8 @@ declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void
     _fbq?: (...args: unknown[]) => void
+    __STOREFRONT_META_PIXEL_IDS__?: Record<string, true>
+    __STOREFRONT_META_PAGEVIEW_PIXEL_ID__?: string
   }
 }
 
@@ -254,11 +256,13 @@ function ensureMetaBaseScript() {
   } as ((...payload: unknown[]) => void) & {
     callMethod?: (...payload: unknown[]) => void
     queue?: unknown[][]
+    push?: (...payload: unknown[]) => void
     loaded?: boolean
     version?: string
   }
 
   fbq.queue = []
+  fbq.push = fbq
   fbq.loaded = true
   fbq.version = '2.0'
 
@@ -270,7 +274,12 @@ function ensureMetaBaseScript() {
     script.id = META_SCRIPT_ID
     script.async = true
     script.src = 'https://connect.facebook.net/en_US/fbevents.js'
-    doc.head.appendChild(script)
+    const firstScript = doc.getElementsByTagName('script')[0]
+    if (firstScript?.parentNode) {
+      firstScript.parentNode.insertBefore(script, firstScript)
+    } else {
+      doc.head.appendChild(script)
+    }
   }
 }
 
@@ -280,15 +289,27 @@ function ensureMetaPixel(pixelId: string) {
 
   ensureMetaBaseScript()
 
+  if (win.__STOREFRONT_META_PIXEL_IDS__?.[pixelId]) {
+    initializedMetaPixels.add(pixelId)
+    return
+  }
+
   if (!initializedMetaPixels.has(pixelId)) {
     win.fbq?.('init', pixelId)
     initializedMetaPixels.add(pixelId)
+    win.__STOREFRONT_META_PIXEL_IDS__ = {
+      ...(win.__STOREFRONT_META_PIXEL_IDS__ ?? {}),
+      [pixelId]: true,
+    }
   }
 }
 
-function trackMetaPageView() {
+function trackMetaPageView(pixelId?: string) {
   const win = getBrowserWindow()
   win?.fbq?.('track', 'PageView')
+  if (win && pixelId) {
+    win.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ = pixelId
+  }
 }
 
 function normalizeCartItem(item: CartItem, quantityOverride?: number): NormalizedAnalyticsItem | null {
@@ -407,7 +428,7 @@ function isPaidStatus(status?: string | null) {
 export const useAnalyticsStore = defineStore('analytics', () => {
   const storefrontSettings = useStorefrontSettingsStore()
   const bootstrapped = ref(false)
-  const bootstrappedPixelId = ref<string | null>(null)
+  const bootstrappedPixelId = ref<string | null>(getBrowserWindow()?.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ ?? null)
 
   const metaSettings = computed(() => storefrontSettings.settings.analytics.meta)
   const metaReady = computed(() =>
@@ -477,7 +498,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
       ensureMetaPixel(pixelId)
       if (bootstrappedPixelId.value !== pixelId) {
-        trackMetaPageView()
+        trackMetaPageView(pixelId)
         bootstrappedPixelId.value = pixelId
       }
     }, { immediate: true })
@@ -486,7 +507,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       syncMetaAttribution()
       if (activeMetaPixelId.value) {
         ensureMetaPixel(activeMetaPixelId.value)
-        trackMetaPageView()
+        trackMetaPageView(activeMetaPixelId.value)
       }
     })
   }

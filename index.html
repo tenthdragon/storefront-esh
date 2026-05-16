@@ -4,6 +4,67 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storefront</title>
+    <script>
+      window.__STOREFRONT_PUBLIC_SETTINGS__ = null;
+      window.__STOREFRONT_PUBLIC_SETTINGS_PROMISE__ = fetch('/storefront-api/settings', {
+        headers: { Accept: 'application/json' },
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error('Gagal memuat storefront settings.');
+          }
+
+          return response.json();
+        })
+        .then(function (settings) {
+          window.__STOREFRONT_PUBLIC_SETTINGS__ = settings;
+
+          var meta = settings && settings.analytics && settings.analytics.meta;
+          var pixelId = meta && meta.enabled && typeof meta.pixelId === 'string'
+            ? meta.pixelId.trim()
+            : '';
+
+          if (pixelId) {
+            !(function (f, b, e, v, n, t, s) {
+              if (f.fbq) return;
+              n = f.fbq = function () {
+                n.callMethod
+                  ? n.callMethod.apply(n, arguments)
+                  : n.queue.push(arguments);
+              };
+              if (!f._fbq) f._fbq = n;
+              n.push = n;
+              n.loaded = true;
+              n.version = '2.0';
+              n.queue = [];
+              t = b.createElement(e);
+              t.id = 'storefront-meta-pixel';
+              t.async = true;
+              t.src = v;
+              s = b.getElementsByTagName(e)[0];
+              if (s && s.parentNode) {
+                s.parentNode.insertBefore(t, s);
+              } else {
+                b.head.appendChild(t);
+              }
+            })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+
+            window.__STOREFRONT_META_PIXEL_IDS__ = window.__STOREFRONT_META_PIXEL_IDS__ || {};
+            if (!window.__STOREFRONT_META_PIXEL_IDS__[pixelId]) {
+              window.fbq('init', pixelId);
+              window.__STOREFRONT_META_PIXEL_IDS__[pixelId] = true;
+            }
+            window.fbq('track', 'PageView');
+            window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ = pixelId;
+          }
+
+          return settings;
+        })
+        .catch(function (error) {
+          console.warn('Gagal memuat storefront settings awal.', error);
+          throw error;
+        });
+    </script>
   </head>
   <body>
     <div id="app"></div>
