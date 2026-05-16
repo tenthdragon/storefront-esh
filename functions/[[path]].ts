@@ -34,6 +34,7 @@ function buildMetaPixelScript(pixelId: string) {
 
   const serializedPixelId = escapeInlineJson(normalizedPixelId)
   return [
+    `const META_PIXEL_IDS=[${serializedPixelId}];`,
     '!function(f,b,e,v,n,t,s)',
     "{if(f.fbq)return;n=f.fbq=function(){n.callMethod?",
     "n.callMethod.apply(n,arguments):n.queue.push(arguments)};",
@@ -42,10 +43,15 @@ function buildMetaPixelScript(pixelId: string) {
     "t.src=v;s=b.getElementsByTagName(e)[0];",
     "if(s&&s.parentNode){s.parentNode.insertBefore(t,s)}else{b.head.appendChild(t)}}",
     "(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');",
-    `fbq('init',${serializedPixelId});`,
-    "fbq('track', 'PageView');",
-    `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=${serializedPixelId};`,
-    `window.__STOREFRONT_META_PIXEL_IDS__={${serializedPixelId}:true};`,
+    'function initPixels(){',
+    'if(window.__scalevStorefrontPixelsInitialized)return;',
+    'window.__scalevStorefrontPixelsInitialized=true;',
+    'for(const pixelId of META_PIXEL_IDS){window.fbq?.("init",pixelId);}',
+    'window.fbq?.("track","PageView");',
+    '}',
+    'initPixels();',
+    `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=META_PIXEL_IDS[0]??${serializedPixelId};`,
+    'window.__STOREFRONT_META_PIXEL_IDS__=Object.fromEntries(META_PIXEL_IDS.map((pixelId)=>[pixelId,true]));',
   ].join('')
 }
 
