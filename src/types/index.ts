@@ -73,6 +73,7 @@ export interface Product {
   slug: string
   name: string
   description?: string
+  rich_description?: string
   images: string[]
   variants: ProductVariant[]
 }
@@ -82,6 +83,7 @@ export interface Bundle {
   slug: string
   name: string
   description?: string
+  rich_description?: string
   images: string[]
   price: number
   original_price?: number

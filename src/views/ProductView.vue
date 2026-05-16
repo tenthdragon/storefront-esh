@@ -74,7 +74,14 @@ const originalPrice = computed(() => {
 })
 
 const currentName = computed(() => isBundle.value ? bundle.value?.name : product.value?.name)
-const currentDescription = computed(() => isBundle.value ? bundle.value?.description : product.value?.description)
+const currentRichDescription = computed(() => {
+  const description = isBundle.value ? bundle.value?.rich_description : product.value?.rich_description
+  return description?.trim() ? description : null
+})
+const currentDescription = computed(() => {
+  const description = isBundle.value ? bundle.value?.description : product.value?.description
+  return normalizePlainDescription(description)
+})
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat('id-ID', {
@@ -106,6 +113,16 @@ async function addToCart() {
   } finally {
     addingToCart.value = false
   }
+}
+
+function normalizePlainDescription(description?: string) {
+  const normalized = description
+    ?.replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return normalized || null
 }
 </script>
 
@@ -173,9 +190,10 @@ async function addToCart() {
         </button>
       </aside>
 
-      <div v-if="currentDescription" class="description">
+      <div v-if="currentRichDescription || currentDescription" class="description">
         <p class="section-label">Deskripsi</p>
-        <div v-html="currentDescription" />
+        <div v-if="currentRichDescription" v-html="currentRichDescription" />
+        <p v-else class="description-copy">{{ currentDescription }}</p>
       </div>
     </div>
 
@@ -428,6 +446,11 @@ async function addToCart() {
   font-size: 16px;
   line-height: 1.7;
   max-width: 62ch;
+}
+
+.description-copy {
+  margin: 0;
+  white-space: pre-line;
 }
 
 .description :deep(> div > * + *) {

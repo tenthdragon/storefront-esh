@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Item } from '@/types'
 
 const props = defineProps<{ item: Item }>()
+const summary = computed(() => summarizeDescription(props.item.description))
 
 function formatPrice(price: string) {
   return new Intl.NumberFormat('id-ID', {
@@ -28,6 +30,10 @@ function cardTone(item: Item) {
   ]
   return palettes[item.id % palettes.length]
 }
+
+function summarizeDescription(description?: string) {
+  return description?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() ?? ''
+}
 </script>
 
 <template>
@@ -47,6 +53,7 @@ function cardTone(item: Item) {
 
     <div class="card-meta">
       <p class="card-title">{{ item.name }}</p>
+      <p v-if="summary" class="card-summary">{{ summary }}</p>
       <div class="card-row">
         <span class="price-text">{{ formatPrice(item.price_range.min) }}</span>
         <span class="card-stock">{{ item.in_stock ? 'Tersedia' : 'Stok Habis' }}</span>
@@ -145,6 +152,8 @@ function cardTone(item: Item) {
 
 .card-meta {
   padding: 0 4px;
+  display: grid;
+  gap: 10px;
 }
 
 .card-title {
@@ -153,7 +162,18 @@ function cardTone(item: Item) {
   line-height: 1.32;
   letter-spacing: -0.02em;
   color: var(--sf-ink);
-  margin-bottom: 12px;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--sf-ink-soft);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
