@@ -393,6 +393,34 @@ function buildScalevItems(items: NormalizedAnalyticsItem[]) {
   }
 }
 
+function buildProductVariantAnalyticsItem(
+  product: Product,
+  variant: ProductVariant | null,
+  quantity: number,
+): NormalizedAnalyticsItem {
+  const price = Number(variant?.price ?? 0)
+
+  return {
+    type: 'variant',
+    uniqueId: variant?.unique_id,
+    fallbackId: variant?.unique_id ?? `product:${product.id}`,
+    quantity,
+    price,
+    name: product.name,
+  }
+}
+
+function buildBundleAnalyticsItem(bundle: Bundle, quantity: number): NormalizedAnalyticsItem {
+  return {
+    type: 'bundle_price_option',
+    uniqueId: bundle.bundle_price_option_unique_id,
+    fallbackId: bundle.bundle_price_option_unique_id ?? `bundle_price_option:${bundle.id}`,
+    quantity,
+    price: Number(bundle.price ?? 0),
+    name: bundle.name,
+  }
+}
+
 function persistPendingPurchase(context: PendingPurchaseContext) {
   writeJsonStorage(
     getSessionStorage(),
@@ -515,15 +543,8 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   async function trackMetaViewContentForProduct(product: Product, variant: ProductVariant | null) {
     if (!metaSettings.value.trackViewContent) return false
 
-    const price = Number(variant?.price ?? 0)
-    const items: NormalizedAnalyticsItem[] = variant ? [{
-      type: 'variant',
-      uniqueId: variant.unique_id,
-      fallbackId: variant.unique_id ?? `variant:${variant.id}`,
-      quantity: 1,
-      price,
-      name: product.name,
-    }] : []
+    const variantItem = buildProductVariantAnalyticsItem(product, variant, 1)
+    const items: NormalizedAnalyticsItem[] = variant ? [variantItem] : []
 
     return sendMetaEvent({
       eventId: generateEventId('meta_vc'),
@@ -533,13 +554,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         externalId: getScalevGuestToken() ?? undefined,
       },
       parameters: buildMetaParameters(
-        items.length ? items : [{
-          type: 'variant',
-          fallbackId: `product:${product.id}`,
-          quantity: 1,
-          price,
-          name: product.name,
-        }],
+        items.length ? items : [variantItem],
         { contentName: product.name },
       ),
     })
@@ -548,15 +563,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
   async function trackMetaViewContentForBundle(bundle: Bundle) {
     if (!metaSettings.value.trackViewContent) return false
 
-    const price = Number(bundle.price ?? 0)
-    const items: NormalizedAnalyticsItem[] = [{
-      type: 'bundle_price_option',
-      uniqueId: bundle.bundle_price_option_unique_id,
-      fallbackId: bundle.bundle_price_option_unique_id ?? `bundle_price_option:${bundle.id}`,
-      quantity: 1,
-      price,
-      name: bundle.name,
-    }]
+    const items: NormalizedAnalyticsItem[] = [buildBundleAnalyticsItem(bundle, 1)]
 
     return sendMetaEvent({
       eventId: generateEventId('meta_vc'),
@@ -574,6 +581,48 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
     const normalized = normalizeCartItem(item, quantityAdded)
     if (!normalized) return false
+
+    return sendMetaEvent({
+      eventId: generateEventId('meta_atc'),
+      eventName: 'AddToCart',
+      items: [normalized],
+      customer: {
+        externalId: getScalevGuestToken() ?? undefined,
+      },
+      parameters: buildMetaParameters([normalized], {
+        contentName: normalized.name,
+        valueOverride: normalized.price * quantityAdded,
+      }),
+    })
+  }
+
+  async function trackMetaAddToCartForProduct(
+    product: Product,
+    variant: ProductVariant | null,
+    quantityAdded: number,
+  ) {
+    if (!metaSettings.value.trackAddToCart) return false
+
+    const normalized = buildProductVariantAnalyticsItem(product, variant, quantityAdded)
+
+    return sendMetaEvent({
+      eventId: generateEventId('meta_atc'),
+      eventName: 'AddToCart',
+      items: [normalized],
+      customer: {
+        externalId: getScalevGuestToken() ?? undefined,
+      },
+      parameters: buildMetaParameters([normalized], {
+        contentName: normalized.name,
+        valueOverride: normalized.price * quantityAdded,
+      }),
+    })
+  }
+
+  async function trackMetaAddToCartForBundle(bundle: Bundle, quantityAdded: number) {
+    if (!metaSettings.value.trackAddToCart) return false
+
+    const normalized = buildBundleAnalyticsItem(bundle, quantityAdded)
 
     return sendMetaEvent({
       eventId: generateEventId('meta_atc'),
@@ -705,6 +754,8 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     registerCheckoutPurchase,
     shouldHandlePurchaseTrigger,
     trackMetaAddToCart,
+    trackMetaAddToCartForBundle,
+    trackMetaAddToCartForProduct,
     trackMetaInitiateCheckout,
     trackMetaViewContentForBundle,
     trackMetaViewContentForProduct,

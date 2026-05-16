@@ -125,18 +125,16 @@ async function addToCart() {
         bundle_price_option_id: bundle.value.id,
         quantity: quantity.value,
       })
-      const trackedItem = cart.cart?.items.find((item) =>
-        item.type === 'bundle_price_option' && item.bundle_price_option_id === bundle.value?.id)
-      void analytics.trackMetaAddToCart(trackedItem ?? null, quantity.value)
+      void analytics.trackMetaAddToCartForBundle(bundle.value, quantity.value)
     } else if (selectedVariant.value) {
       await cart.addItem({
         type: 'variant',
         variant_id: selectedVariant.value.id,
         quantity: quantity.value,
       })
-      const trackedItem = cart.cart?.items.find((item) =>
-        item.type === 'variant' && item.variant_id === selectedVariant.value?.id)
-      void analytics.trackMetaAddToCart(trackedItem ?? null, quantity.value)
+      if (product.value) {
+        void analytics.trackMetaAddToCartForProduct(product.value, selectedVariant.value, quantity.value)
+      }
     }
     router.push('/cart')
   } catch (e) {
