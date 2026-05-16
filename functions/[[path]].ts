@@ -38,7 +38,7 @@ function buildBootstrapScript(settings: StorefrontPublicSettings) {
       `fbq('init',${serializedPixelId});`,
       `window.__STOREFRONT_META_PIXEL_IDS__[${serializedPixelId}]=true;`,
       '}',
-      `fbq('track','PageView');`,
+      `fbq('trackSingle',${serializedPixelId},'PageView');`,
       `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=${serializedPixelId};`,
     )
   }

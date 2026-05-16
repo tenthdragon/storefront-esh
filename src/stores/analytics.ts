@@ -47,6 +47,8 @@ interface PendingPurchaseContext {
   createdAt: string
 }
 
+type MetaBrowserEventName = 'PageView' | 'ViewContent' | 'AddToCart' | 'InitiateCheckout' | 'Purchase'
+
 const META_SCRIPT_ID = 'storefront-meta-pixel'
 const META_SENT_EVENTS_KEY = 'sf.meta.sent-events'
 const META_PENDING_PURCHASE_PREFIX = 'sf.meta.pending-purchase:'
@@ -304,9 +306,40 @@ function ensureMetaPixel(pixelId: string) {
   }
 }
 
+function dispatchMetaBrowserEvent(
+  eventName: MetaBrowserEventName,
+  parameters: Record<string, unknown> = {},
+  options: {
+    pixelId?: string
+    eventId?: string
+  } = {},
+) {
+  const win = getBrowserWindow()
+  const pixelId = options.pixelId?.trim()
+  if (!win?.fbq) return false
+
+  const eventOptions = options.eventId ? { eventID: options.eventId } : undefined
+
+  if (pixelId) {
+    try {
+      win.fbq('trackSingle', pixelId, eventName, parameters, eventOptions)
+      return true
+    } catch {
+      // Fall back to generic track below.
+    }
+  }
+
+  try {
+    win.fbq('track', eventName, parameters, eventOptions)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function trackMetaPageView(pixelId?: string) {
   const win = getBrowserWindow()
-  win?.fbq?.('track', 'PageView')
+  dispatchMetaBrowserEvent('PageView', {}, { pixelId })
   if (win && pixelId) {
     win.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ = pixelId
   }
@@ -468,7 +501,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
   async function sendMetaEvent(input: {
     eventId: string
-    eventName: 'ViewContent' | 'AddToCart' | 'InitiateCheckout' | 'Purchase'
+    eventName: Exclude<MetaBrowserEventName, 'PageView'>
     items: NormalizedAnalyticsItem[]
     customer?: AnalyticsCustomer
     parameters: Record<string, unknown>
@@ -484,11 +517,10 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       ...input.parameters,
     }
 
-    try {
-      getBrowserWindow()?.fbq?.('track', input.eventName, browserPayload, { eventID: input.eventId })
-    } catch {
-      // Ignore browser pixel failures to avoid blocking checkout flow.
-    }
+    dispatchMetaBrowserEvent(input.eventName, browserPayload, {
+      pixelId: metaSettings.value.pixelId.trim(),
+      eventId: input.eventId,
+    })
 
     try {
       await postMetaAnalyticsEvent({
