@@ -15,8 +15,12 @@ import type {
 
 declare global {
   interface Window {
-    fbq?: (...args: unknown[]) => void
-    _fbq?: (...args: unknown[]) => void
+    fbq?: ((...args: unknown[]) => void) & {
+      callMethod?: (...args: unknown[]) => void
+    }
+    _fbq?: ((...args: unknown[]) => void) & {
+      callMethod?: (...args: unknown[]) => void
+    }
     __STOREFRONT_META_PIXEL_IDS__?: Record<string, true>
     __STOREFRONT_META_PAGEVIEW_PIXEL_ID__?: string
     __STOREFRONT_META_DEBUG_EVENTS__?: Array<{
@@ -339,6 +343,10 @@ function dispatchMetaBrowserEvent(
   })
 
   try {
+    if (eventName === 'PageView') {
+      win.fbq('track', 'PageView')
+      return true
+    }
     win.fbq('track', eventName, parameters, eventOptions)
     return true
   } catch {
@@ -346,12 +354,29 @@ function dispatchMetaBrowserEvent(
   }
 }
 
-function trackMetaPageView(pixelId?: string) {
+function waitForMetaSdkReady(maxAttempts = 40, attempt = 0): Promise<boolean> {
   const win = getBrowserWindow()
-  dispatchMetaBrowserEvent('PageView', {}, { pixelId })
-  if (win && pixelId) {
+  if (!win?.fbq) return Promise.resolve(false)
+  if (typeof win.fbq.callMethod === 'function') return Promise.resolve(true)
+  if (attempt >= maxAttempts) return Promise.resolve(false)
+
+  return new Promise((resolve) => {
+    window.setTimeout(() => {
+      void waitForMetaSdkReady(maxAttempts, attempt + 1).then(resolve)
+    }, 100)
+  })
+}
+
+async function trackMetaPageView(pixelId?: string) {
+  const ready = await waitForMetaSdkReady()
+  if (!ready) return false
+
+  const win = getBrowserWindow()
+  const tracked = dispatchMetaBrowserEvent('PageView', {}, { pixelId })
+  if (win && pixelId && tracked) {
     win.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__ = pixelId
   }
+  return tracked
 }
 
 function normalizeCartItem(item: CartItem, quantityOverride?: number): NormalizedAnalyticsItem | null {
@@ -533,7 +558,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     metaReady.value ? metaSettings.value.pixelId.trim() : '',
   )
 
-  function trackRoutePageView(routeKey: string, pixelId: string, force = false) {
+  async function trackRoutePageView(routeKey: string, pixelId: string, force = false) {
     if (!pixelId) return false
 
     const signature = `${pixelId}::${routeKey}`
@@ -542,7 +567,10 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     }
 
     ensureMetaPixel(pixelId)
-    trackMetaPageView(pixelId)
+    const tracked = await trackMetaPageView(pixelId)
+    if (!tracked) {
+      return false
+    }
     lastTrackedPageViewSignature.value = signature
     return true
   }
@@ -616,14 +644,14 @@ export const useAnalyticsStore = defineStore('analytics', () => {
     void router.isReady().then(() => {
       syncMetaAttribution()
       if (activeMetaPixelId.value) {
-        trackRoutePageView(router.currentRoute.value.fullPath, activeMetaPixelId.value)
+        void trackRoutePageView(router.currentRoute.value.fullPath, activeMetaPixelId.value)
       }
     })
 
     router.afterEach((to) => {
       syncMetaAttribution()
       if (activeMetaPixelId.value) {
-        trackRoutePageView(to.fullPath, activeMetaPixelId.value)
+        void trackRoutePageView(to.fullPath, activeMetaPixelId.value)
       }
     })
   }
