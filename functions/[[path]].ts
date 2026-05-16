@@ -47,11 +47,17 @@ function buildMetaPixelScript(pixelId: string) {
     'if(window.__scalevStorefrontPixelsInitialized)return;',
     'window.__scalevStorefrontPixelsInitialized=true;',
     'for(const pixelId of META_PIXEL_IDS){window.fbq?.("init",pixelId);}',
-    'window.fbq?.("track","PageView");',
-    '}',
-    'initPixels();',
     `window.__STOREFRONT_META_PAGEVIEW_PIXEL_ID__=META_PIXEL_IDS[0]??${serializedPixelId};`,
     'window.__STOREFRONT_META_PIXEL_IDS__=Object.fromEntries(META_PIXEL_IDS.map((pixelId)=>[pixelId,true]));',
+    'const firePageView=()=>{',
+    'if(window.__scalevStorefrontPageViewTracked)return;',
+    'window.__scalevStorefrontPageViewTracked=true;',
+    'window.fbq?.("track","PageView");',
+    '};',
+    'if(document.readyState==="complete"){firePageView();}',
+    'else{window.addEventListener("load",firePageView,{once:true});}',
+    '}',
+    'initPixels();',
   ].join('')
 }
 
