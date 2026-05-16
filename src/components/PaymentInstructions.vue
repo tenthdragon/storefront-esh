@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useStorefrontSettingsStore } from '@/stores/storefrontSettings'
 import type { Order, PaymentAccount } from '@/types'
+import { getOrderCustomerName } from '@/utils/order'
 
 const props = defineProps<{ order: Order }>()
 
@@ -66,7 +67,10 @@ const confirmationMessage = computed(() => {
   if (decoded) return decoded
 
   const reference = props.order.secret_slug || String(props.order.id)
-  return `Halo, saya sudah melakukan pemesanan ${reference} atas nama ${props.order.customer_name}. Mohon dibantu cek ya.`
+  const customerName = getOrderCustomerName(props.order)
+  return customerName
+    ? `Halo, saya sudah melakukan pemesanan ${reference} atas nama ${customerName}. Mohon dibantu cek ya.`
+    : `Halo, saya sudah melakukan pemesanan ${reference}. Mohon dibantu cek ya.`
 })
 const confirmationWhatsappUrl = computed(() => {
   if (!whatsappNumber.value) return ''

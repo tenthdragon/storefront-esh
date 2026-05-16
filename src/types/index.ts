@@ -214,9 +214,22 @@ export interface Order {
   secret_slug: string
   status: string
   payment_status?: string
-  customer_name: string
-  customer_email: string
+  customer_name?: string
+  customer_email?: string
   customer_phone?: string
+  customer?: {
+    name?: string
+    email?: string
+    phone?: string
+  }
+  destination_address?: {
+    name?: string
+    phone?: string
+    address?: string
+    subdistrict?: string
+    city?: string
+    province?: string
+  }
   items: CartItem[]
   product_price: number
   product_discount: number

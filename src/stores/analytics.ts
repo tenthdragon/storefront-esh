@@ -4,6 +4,7 @@ import type { Router } from 'vue-router'
 import { postMetaAnalyticsEvent } from '@/api/analytics'
 import { getScalevGuestToken } from '@/api/client'
 import { useStorefrontSettingsStore } from './storefrontSettings'
+import { getOrderCustomerEmail, getOrderCustomerName, getOrderCustomerPhone } from '@/utils/order'
 import type {
   Bundle,
   CartItem,
@@ -915,9 +916,9 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       eventName: 'Purchase',
       items: normalizedItems,
       customer: {
-        name: pending?.customer?.name ?? order.customer_name,
-        email: pending?.customer?.email ?? order.customer_email,
-        phone: pending?.customer?.phone ?? order.customer_phone,
+        name: pending?.customer?.name ?? getOrderCustomerName(order),
+        email: pending?.customer?.email ?? getOrderCustomerEmail(order),
+        phone: pending?.customer?.phone ?? getOrderCustomerPhone(order),
         externalId: pending?.customer?.externalId ?? String(order.id),
       },
       parameters: buildMetaParameters(normalizedItems, {

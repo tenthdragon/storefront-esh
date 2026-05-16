@@ -5,12 +5,18 @@ import { getOrder } from '@/api/checkout'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 import type { Order } from '@/types'
+import { getOrderCustomerName } from '@/utils/order'
 
 const route = useRoute()
 const analytics = useAnalyticsStore()
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+function orderHeading(orderData: Order) {
+  const customerName = getOrderCustomerName(orderData)
+  return customerName ? `Terima kasih, ${customerName}.` : 'Terima kasih.'
+}
 
 onMounted(async () => {
   try {
@@ -33,7 +39,7 @@ onMounted(async () => {
     <div v-else-if="order" class="order-content">
       <div class="success-banner">
         <span class="eyebrow">Pesanan berhasil</span>
-        <h1>Terima kasih, {{ order.customer_name }}.</h1>
+        <h1>{{ orderHeading(order) }}</h1>
         <p>Silakan lanjutkan pembayaran sesuai instruksi di bawah agar pesanan Anda segera diproses.</p>
       </div>
       <PaymentInstructions :order="order" />
