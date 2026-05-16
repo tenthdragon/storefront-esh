@@ -220,19 +220,26 @@ function goBack() {
     <form v-if="currentStep === 'customer'" class="panel form" @submit.prevent="continueFromCustomerStep">
       <div class="field">
         <label>Nama Lengkap</label>
-        <input v-model="form.customer_name" required />
+        <input v-model="form.customer_name" autocomplete="name" required />
       </div>
       <div class="field">
         <label>Email</label>
-        <input v-model="form.customer_email" type="email" required />
+        <input v-model="form.customer_email" type="email" autocomplete="email" required />
       </div>
       <div class="field">
         <label>No. HP (format: 628xxx)</label>
-        <input v-model="form.customer_phone" required />
+        <input
+          v-model="form.customer_phone"
+          type="tel"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          autocomplete="tel"
+          required
+        />
       </div>
       <div v-if="needsShipping" class="field">
         <label>Alamat Lengkap</label>
-        <textarea v-model="form.shipping_address" rows="3" required />
+        <textarea v-model="form.shipping_address" rows="3" autocomplete="street-address" required />
       </div>
       <div v-if="needsShipping" class="field">
         <label>Kecamatan / Kota</label>
@@ -405,7 +412,7 @@ h1 {
   padding: 13px 15px;
   border: 1px solid var(--sf-line-strong);
   border-radius: 18px;
-  font-size: 14px;
+  font-size: 16px;
   background: #fffdf9;
   color: var(--sf-ink);
 }

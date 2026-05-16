@@ -84,7 +84,7 @@ function formatPrice(price: number) {
           <span>{{ formatPrice(subtotal) }}</span>
         </div>
         <button class="btn-checkout" @click="router.push('/checkout')">
-          Lanjut ke Checkout
+          Checkout
         </button>
       </aside>
     </div>
@@ -152,13 +152,16 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   border-radius: 999px;
   border: 1px solid var(--sf-accent);
   background: var(--sf-accent);
   color: var(--sf-accent-contrast);
-  padding: 14px 20px;
+  min-height: 54px;
+  padding: 16px 24px;
   text-decoration: none;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
@@ -315,6 +318,12 @@ h1 {
   .no-img {
     width: 72px;
     height: 72px;
+  }
+
+  .btn-checkout {
+    min-height: 58px;
+    padding: 18px 24px;
+    font-size: 16px;
   }
 }
 </style>

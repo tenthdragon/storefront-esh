@@ -89,7 +89,7 @@ function onPostalChange() {
   padding: 13px 15px;
   border: 1px solid var(--sf-line-strong);
   border-radius: 18px;
-  font-size: 14px;
+  font-size: 16px;
   background: #fffdf9;
   color: var(--sf-ink);
 }
