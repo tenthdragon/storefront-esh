@@ -130,6 +130,17 @@ function paymentMethodLabel(method: PaymentMethodOption) {
   return method.label || method.code
 }
 
+function normalizePaymentMethodCode(value: string | undefined) {
+  return (value ?? '').trim().toLowerCase()
+}
+
+function shouldRedirectToScalevPayment(paymentMethod: string | undefined, paymentUrl?: string) {
+  if (!paymentUrl) return false
+
+  const code = normalizePaymentMethodCode(paymentMethod)
+  return code !== 'bank_transfer' && code !== 'cod'
+}
+
 function getPaymentMethodMeta(method: PaymentMethodOption) {
   switch (method.code) {
     case 'qris':
@@ -259,12 +270,18 @@ async function placeOrder() {
     }
 
     const order = await submitCheckout(payload)
-    void analytics.registerCheckoutPurchase(order, cartItemsSnapshot, {
+    await analytics.registerCheckoutPurchase(order, cartItemsSnapshot, {
       name: form.value.customer_name,
       email: form.value.customer_email,
       phone: form.value.customer_phone,
     })
     cart.resetCartSession()
+
+    if (shouldRedirectToScalevPayment(order.payment_method, order.payment_url)) {
+      window.location.assign(order.payment_url!)
+      return
+    }
+
     router.push(`/orders/${order.secret_slug}`)
   } catch (e) {
     const message = (e as Error).message
