@@ -2,6 +2,12 @@
 
 Runbook ini dibuat agar LLM lain bisa membantu user membuat storefront baru dari nol dengan arsitektur yang sama seperti repo ini.
 
+Sebelum menjalankan langkah operasional, baca juga:
+
+- [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md)
+- [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md)
+- [docs/STORE_DUPLICATION_CHECKLIST.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_DUPLICATION_CHECKLIST.md)
+
 ## Operating Model
 
 Asumsikan model berikut:
