@@ -46,6 +46,7 @@ Alasan:
   - heuristik provider pembayaran
 
 Dokumen khususnya ada di [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md).
+Untuk tracking dan pixel, baca juga [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md).
 
 ### 2. Backend internal hanya untuk kebutuhan non-Scalev
 
@@ -212,6 +213,8 @@ Keuntungan:
 - base snippet diinject di HTML awal
 - settings pixel dibaca dari public storefront settings
 - event lanjutan ditrigger dari runtime app
+
+Dokumen detailnya ada di [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md).
 
 ## Hal yang Harus Tetap Dipertahankan Saat Duplikasi
 

@@ -4,6 +4,7 @@ Runbook ini dibuat agar LLM lain bisa membantu user membuat storefront baru dari
 
 Sebelum menjalankan langkah operasional, baca juga:
 
+- [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md)
 - [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md)
 - [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md)
 - [docs/STORE_DUPLICATION_CHECKLIST.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_DUPLICATION_CHECKLIST.md)

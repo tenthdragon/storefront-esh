@@ -110,6 +110,7 @@ Dokumen lengkapnya ada di [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Docu
 
 ## Dokumen Operasional
 
+- [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md)
 - [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md)
 - [docs/LLM_STORE_LAUNCH_RUNBOOK.md](/Users/armyalghifari/Documents/Github/storefront/docs/LLM_STORE_LAUNCH_RUNBOOK.md)
 - [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Documents/Github/storefront/docs/NAMING_CONVENTIONS.md)
@@ -130,4 +131,4 @@ Dokumen lengkapnya ada di [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Docu
 
 Jika storefront baru nanti akan dibantu oleh LLM lain, prompt awal yang aman dan efektif adalah:
 
-> Gunakan [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md), [docs/LLM_STORE_LAUNCH_RUNBOOK.md](/Users/armyalghifari/Documents/Github/storefront/docs/LLM_STORE_LAUNCH_RUNBOOK.md), [docs/STORE_DUPLICATION_CHECKLIST.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_DUPLICATION_CHECKLIST.md), dan [docs/STORE_CONFIG_TEMPLATE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_CONFIG_TEMPLATE.md). Bantu saya membuat storefront baru dari starter ini sampai live di Cloudflare Pages. Jangan deploy manual dari lokal. Pakai GitHub sebagai source of truth. Tanyakan hanya input yang benar-benar belum ada, lalu kerjakan sisanya end-to-end.
+> Gunakan [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md), [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md), [docs/LLM_STORE_LAUNCH_RUNBOOK.md](/Users/armyalghifari/Documents/Github/storefront/docs/LLM_STORE_LAUNCH_RUNBOOK.md), [docs/STORE_DUPLICATION_CHECKLIST.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_DUPLICATION_CHECKLIST.md), dan [docs/STORE_CONFIG_TEMPLATE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_CONFIG_TEMPLATE.md). Bantu saya membuat storefront baru dari starter ini sampai live di Cloudflare Pages. Jangan deploy manual dari lokal. Pakai GitHub sebagai source of truth. Tanyakan hanya input yang benar-benar belum ada, lalu kerjakan sisanya end-to-end.
