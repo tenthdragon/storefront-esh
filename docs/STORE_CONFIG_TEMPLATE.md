@@ -1,6 +1,6 @@
 # Store Config Template
 
-Isi dokumen ini dulu saat akan membuat storefront baru dari starter ini.
+Fill out this document before launching a new storefront from this starter.
 
 ## Identity
 
@@ -11,7 +11,7 @@ Isi dokumen ini dulu saat akan membuat storefront baru dari starter ini.
 ## GitHub
 
 - GitHub owner:
-- GitHub repo name:
+- GitHub repository name:
 - Production branch: `main`
 
 ## Cloudflare
@@ -19,7 +19,7 @@ Isi dokumen ini dulu saat akan membuat storefront baru dari starter ini.
 - Cloudflare account name:
 - Pages project name:
 - KV namespace name:
-- KV namespace id:
+- KV namespace ID:
 - Custom domain:
 
 ## Scalev

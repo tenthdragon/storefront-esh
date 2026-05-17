@@ -1,8 +1,8 @@
 # LLM Store Launch Runbook
 
-Runbook ini dibuat agar LLM lain bisa membantu user membuat storefront baru dari nol dengan arsitektur yang sama seperti repo ini.
+This runbook exists so another LLM can help a user launch a new storefront from scratch using the same architecture as this repository.
 
-Sebelum menjalankan langkah operasional, baca juga:
+Before following the operational steps, also read:
 
 - [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md)
 - [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md)
@@ -11,75 +11,75 @@ Sebelum menjalankan langkah operasional, baca juga:
 
 ## Operating Model
 
-Asumsikan model berikut:
+Assume the following model:
 
-1. satu store Scalev = satu repository
-2. satu store Scalev = satu Cloudflare Pages project
-3. satu store Scalev = satu KV namespace
-4. deploy production hanya lewat GitHub integration ke branch `main`
-5. Storefront API v3 dipanggil langsung dari browser, tidak diproxy lewat backend atau edge
+1. one Scalev store = one repository
+2. one Scalev store = one Cloudflare Pages project
+3. one Scalev store = one KV namespace
+4. production deploys only through GitHub integration to the `main` branch
+5. Storefront API v3 is called directly from the browser, not proxied through backend or edge layers
 
-Jangan gabungkan beberapa store yang berbeda ke satu repository kecuali memang ada keputusan eksplisit untuk membangun platform multi-tenant.
+Do not combine unrelated stores into one repository unless there is an explicit decision to build a multi-tenant platform.
 
-## Input yang Wajib Dikumpulkan
+## Required Inputs
 
-Sebelum mulai, LLM harus memastikan data berikut tersedia:
+Before starting, the LLM should make sure the following data exists:
 
 - store name
 - store slug
 - GitHub owner
-- repo name
-- Cloudflare account yang akan dipakai
+- repository name
+- Cloudflare account to use
 - `VITE_SCALEV_STORE_UNIQUE_ID`
 - `VITE_SCALEV_STOREFRONT_API_KEY`
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET`
-- custom domain jika ada
+- custom domain, if any
 
-Kalau beberapa nama belum dipilih, sarankan default berdasarkan [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Documents/Github/storefront/docs/NAMING_CONVENTIONS.md).
+If some names have not been chosen yet, suggest defaults based on [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Documents/Github/storefront/docs/NAMING_CONVENTIONS.md).
 
-## Step 1: Buat Naming yang Konsisten
+## Step 1: Define Consistent Naming
 
-Turunkan nama resource dari satu `store_slug`.
+Derive all resource names from a single `store_slug`.
 
-Default yang direkomendasikan:
+Recommended defaults:
 
-- repo: `storefront-{store_slug}`
-- pages project: `storefront-{store_slug}`
+- repository: `storefront-{store_slug}`
+- Pages project: `storefront-{store_slug}`
 - KV namespace: `{store_slug}-storefront-settings`
 
-## Step 2: Buat Repository Baru
+## Step 2: Create the New Repository
 
-LLM harus:
+The LLM should:
 
-1. membuat repo baru dari starter ini atau menduplikasi working tree saat ini ke repo baru
-2. memastikan remote `origin` mengarah ke repo store baru
-3. menjaga branch production tetap `main`
+1. create a new repository from this starter or duplicate the current working tree into a new repo
+2. make sure `origin` points to the new store repository
+3. keep the production branch as `main`
 
-## Step 3: Rapikan Config Lokal
+## Step 3: Prepare Local Configuration
 
-LLM harus:
+The LLM should:
 
-1. jalankan bootstrap store:
+1. run the store bootstrap command:
 
 ```bash
 npm run bootstrap:store -- --store-slug <store-slug> --kv-id <kv-namespace-id>
 ```
 
-2. copy `.env.example` ke `.env`
-3. isi:
+2. copy `.env.example` to `.env`
+3. fill in:
    - `VITE_SCALEV_STORE_UNIQUE_ID`
    - `VITE_SCALEV_STOREFRONT_API_KEY`
-4. jalankan `npm install`
-5. jalankan `npm run build`
-6. jalankan `npm run dev` bila perlu verifikasi lokal
+4. run `npm install`
+5. run `npm run build`
+6. run `npm run dev` when local verification is needed
 
-## Step 4: Buat Cloudflare Resources
+## Step 4: Create Cloudflare Resources
 
-LLM harus membantu user membuat:
+The LLM should help the user create:
 
-1. Pages project baru dengan GitHub integration
-2. KV namespace baru
+1. a new Pages project with GitHub integration
+2. a new KV namespace
 
 Pages setup:
 
@@ -87,7 +87,7 @@ Pages setup:
 - Build command: `npm run build`
 - Build output directory: `dist`
 
-Bindings dan secrets yang wajib ada:
+Required bindings and secrets:
 
 - KV binding: `STOREFRONT_SETTINGS`
 - env var: `VITE_SCALEV_STORE_UNIQUE_ID`
@@ -95,99 +95,99 @@ Bindings dan secrets yang wajib ada:
 - secret: `ADMIN_PASSWORD`
 - secret: `ADMIN_SESSION_SECRET`
 
-Catatan:
+Notes:
 
-- env vars harus diisi untuk environment production
-- kalau preview dipakai, isi preview juga agar branch preview tidak error
-- jangan simpan secret production di git
-- bila KV namespace belum ada saat bootstrap awal, LLM boleh memakai placeholder lebih dulu lalu mengganti `wrangler.jsonc` setelah KV dibuat
+- env vars must be filled for production
+- if preview deployments are used, fill preview env vars too
+- do not store production secrets in Git
+- if the KV namespace does not exist yet during bootstrap, a placeholder may be used first and `wrangler.jsonc` can be updated later
 
-## Step 5: Samakan Repo dengan Cloudflare
+## Step 5: Align GitHub and Cloudflare
 
-Setelah Pages project dibuat, LLM harus memastikan:
+After the Pages project is created, the LLM should confirm:
 
-- repo GitHub yang terhubung benar
-- branch production adalah `main`
-- deploy berjalan dari GitHub, bukan direct upload lokal
+- the correct GitHub repository is connected
+- the production branch is `main`
+- deployment comes from GitHub, not from local direct uploads
 
-Kalau perlu, cek aturan di [DEPLOYMENT_POLICY.md](/Users/armyalghifari/Documents/Github/storefront/DEPLOYMENT_POLICY.md).
+See [DEPLOYMENT_POLICY.md](/Users/armyalghifari/Documents/Github/storefront/DEPLOYMENT_POLICY.md) when needed.
 
 ## Step 6: First Launch
 
-LLM harus:
+The LLM should:
 
-1. commit perubahan setup yang memang perlu masuk repo
-2. push ke `main`
-3. tunggu deployment Cloudflare selesai
-4. verifikasi URL production
+1. commit the setup changes that belong in the repository
+2. push to `main`
+3. wait for the Cloudflare deployment to finish
+4. verify the production URL
 
 ## Step 7: Post-Deploy Verification
 
-LLM harus memverifikasi:
+The LLM should verify:
 
-- homepage `/` balas `200`
-- `/admin` bisa dibuka
-- login admin berhasil
-- katalog memuat data produk
-- perubahan visibility item tersimpan
-- `/storefront-api/settings` balas `200`
-- asset live Cloudflare sesuai dengan build commit terakhir
+- homepage `/` returns `200`
+- `/admin` is reachable
+- admin login works
+- the catalog loads products
+- item visibility changes are saved
+- `/storefront-api/settings` returns `200`
+- the live Cloudflare assets match the latest deployed commit
 
 ## Step 8: Initial Merchandising
 
-Setelah live, LLM bisa bantu user mengisi:
+After launch, the LLM can help the user set:
 
-- store name di navbar
+- navbar store name
 - hero title
 - hero subtitle
 - catalog section title
-- warna tombol
-- warna tulisan harga
-- item mana yang visible / hidden
+- button color
+- price text color
+- visible / hidden items
 
 ## Common Failure Cases
 
-### 1. Storefront `404`
+### 1. Storefront returns `404`
 
-Biasanya:
+Usually caused by:
 
-- `VITE_SCALEV_STORE_UNIQUE_ID` salah
-- `VITE_SCALEV_STOREFRONT_API_KEY` salah
-- env var production belum diisi di Cloudflare
+- wrong `VITE_SCALEV_STORE_UNIQUE_ID`
+- wrong `VITE_SCALEV_STOREFRONT_API_KEY`
+- production env vars missing in Cloudflare
 
-### 2. `/admin` tidak bisa login
+### 2. `/admin` cannot log in
 
-Biasanya:
+Usually caused by:
 
-- `ADMIN_PASSWORD` belum diset
-- `ADMIN_SESSION_SECRET` belum diset
+- `ADMIN_PASSWORD` not set
+- `ADMIN_SESSION_SECRET` not set
 
-### 3. Settings tidak tersimpan
+### 3. Settings do not save
 
-Biasanya:
+Usually caused by:
 
-- `STOREFRONT_SETTINGS` belum dibinding ke KV
+- `STOREFRONT_SETTINGS` not bound to KV
 
-### 4. GitHub dan Cloudflare tidak sinkron
+### 4. GitHub and Cloudflare are out of sync
 
-Biasanya:
+Usually caused by:
 
-- deploy belum selesai
-- repo yang terhubung ke Pages salah
-- branch production bukan `main`
+- deployment not finished yet
+- wrong repository connected to Pages
+- production branch not set to `main`
 
 ## Guardrails
 
-LLM tidak boleh:
+The LLM must not:
 
-- deploy production langsung dari lokal
-- menyimpan secret production ke git
-- memakai satu KV namespace untuk store yang berbeda
-- memakai satu repo yang sama untuk store di Cloudflare account berbeda tanpa mengecek batasan integrasi
-- membuat proxy internal untuk Storefront API v3
+- deploy production directly from local
+- commit production secrets to Git
+- reuse one KV namespace across unrelated stores
+- reuse one repository across stores in different Cloudflare accounts without checking platform constraints
+- create an internal proxy for Storefront API v3
 
-## Handoff Prompt yang Direkomendasikan
+## Recommended Handoff Prompt
 
-Kalau user ingin menyerahkan pekerjaan ini ke LLM lain, gunakan prompt:
+If the user wants another LLM to handle the launch, use this prompt:
 
-> Gunakan repo ini sebagai starter satu store. Ikuti [docs/LLM_STORE_LAUNCH_RUNBOOK.md](/Users/armyalghifari/Documents/Github/storefront/docs/LLM_STORE_LAUNCH_RUNBOOK.md) dan [docs/STORE_CONFIG_TEMPLATE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_CONFIG_TEMPLATE.md). Bantu saya membuat storefront baru sampai live di Cloudflare Pages. Gunakan GitHub sebagai source of truth dan jangan deploy manual dari lokal.
+> Use this repository as a one-store starter. Follow [docs/IMPLEMENTATION_BLUEPRINT.md](/Users/armyalghifari/Documents/Github/storefront/docs/IMPLEMENTATION_BLUEPRINT.md), [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md), [docs/LLM_STORE_LAUNCH_RUNBOOK.md](/Users/armyalghifari/Documents/Github/storefront/docs/LLM_STORE_LAUNCH_RUNBOOK.md), [docs/STORE_DUPLICATION_CHECKLIST.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_DUPLICATION_CHECKLIST.md), and [docs/STORE_CONFIG_TEMPLATE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STORE_CONFIG_TEMPLATE.md). Help me launch a new storefront all the way to Cloudflare Pages production. Use GitHub as the source of truth and do not deploy manually from local.

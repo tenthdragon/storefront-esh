@@ -1,78 +1,78 @@
 # Naming Conventions
 
-Dokumen ini menjelaskan maksud dari "naming convention repo" untuk storefront headless ini.
+This document explains what “repository naming convention” means for this headless storefront pattern.
 
-Tujuannya sederhana:
+The goal is simple:
 
-- semua resource memakai nama yang konsisten
-- LLM atau operator manusia mudah menebak relasi antar-resource
-- tidak ada bentrok saat Anda punya banyak store
+- all resources use a consistent naming scheme
+- an LLM or human operator can infer the relationship between resources quickly
+- there are no naming collisions when you have many stores
 
-## Prinsip Dasar
+## Basic Principle
 
-Pilih satu `store slug` yang stabil untuk setiap store.
+Choose one stable `store_slug` for each store.
 
-Aturannya:
+Rules:
 
-- lowercase semua
-- gunakan `kebab-case`
-- hindari spasi
-- hindari nama yang berubah-ubah seperti `final`, `baru`, `test2`
-- hindari memasukkan nama campaign jangka pendek
+- all lowercase
+- use `kebab-case`
+- avoid spaces
+- avoid unstable names such as `final`, `new`, or `test2`
+- avoid short-lived campaign names
 
-## Pola Nama yang Direkomendasikan
+## Recommended Naming Pattern
 
-Jika `store_slug = army-alghifari`, gunakan:
+If `store_slug = army-alghifari`, use:
 
-| Resource | Format | Contoh |
+| Resource | Format | Example |
 | --- | --- | --- |
-| GitHub repo | `storefront-{store_slug}` | `storefront-army-alghifari` |
+| GitHub repository | `storefront-{store_slug}` | `storefront-army-alghifari` |
 | Cloudflare Pages project | `storefront-{store_slug}` | `storefront-army-alghifari` |
 | KV namespace | `{store_slug}-storefront-settings` | `army-alghifari-storefront-settings` |
-| Branch production | `main` | `main` |
+| Production branch | `main` | `main` |
 | Admin URL | `/admin` | `/admin` |
 | Pages subdomain | `{pages_project}.pages.dev` | `storefront-army-alghifari.pages.dev` |
 
-## Jika Satu Business Punya Banyak Store
+## If One Business Has Many Stores
 
-Gunakan slug yang tetap unik, misalnya:
+Use slugs that remain unique, for example:
 
 - `roove-meta-ads`
 - `roove-cavac-model`
 - `army-alghifari`
 - `army-digital-class`
 
-Lalu resource-nya mengikuti:
+Then the resources follow naturally:
 
 - `storefront-roove-meta-ads`
 - `storefront-roove-cavac-model`
 - `storefront-army-alghifari`
 
-## Kenapa Repo dan Pages Project Sebaiknya Sama
+## Why Repository and Pages Project Names Should Match
 
-Kalau repo dan Pages project memakai nama yang sama, proses operasi jadi lebih ringan:
+If the repository and Pages project use the same name, operations become easier:
 
-- mudah dicari di GitHub
-- mudah dicocokkan di Cloudflare
-- runbook LLM lebih sederhana
-- kecil risiko salah deploy ke project lain
+- easier to find in GitHub
+- easier to match in Cloudflare
+- simpler runbooks for LLMs
+- lower risk of deploying to the wrong project
 
-## Anti-Pattern
+## Anti-Patterns
 
-Hindari pola seperti:
+Avoid names such as:
 
 - `storefront-final`
-- `storefront-baru-banget`
+- `storefront-super-new`
 - `army storefront`
 - `StoreFrontArmy`
-- satu repo dipakai untuk beberapa store yang tidak berhubungan
+- one repository used for multiple unrelated stores
 
-## Rekomendasi Praktis
+## Practical Recommendation
 
-Kalau ragu, pakai format ini:
+If you are unsure, use this pattern:
 
-- repo: `storefront-{store_slug}`
-- pages project: `storefront-{store_slug}`
-- KV: `{store_slug}-storefront-settings`
+- repository: `storefront-{store_slug}`
+- Pages project: `storefront-{store_slug}`
+- KV namespace: `{store_slug}-storefront-settings`
 
-Itu sudah cukup rapi, mudah diaudit, dan enak untuk LLM maupun operator manusia.
+That is already clean, easy to audit, and friendly for both LLMs and human operators.

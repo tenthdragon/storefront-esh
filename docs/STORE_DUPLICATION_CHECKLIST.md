@@ -1,54 +1,54 @@
 # Store Duplication Checklist
 
-Checklist ini dibuat agar pola storefront ini bisa diduplikasi ke store Scalev lain secara konsisten.
+This checklist exists so the storefront pattern in this repository can be duplicated for another Scalev store in a consistent way.
 
-## 1. Siapkan Identitas Store Baru
+## 1. Prepare the New Store Identity
 
-- tentukan `store_slug`
-- tentukan `store name`
-- siapkan `VITE_SCALEV_STORE_UNIQUE_ID`
-- siapkan `VITE_SCALEV_STOREFRONT_API_KEY`
-- tentukan GitHub owner/repo baru
-- tentukan Cloudflare account yang akan dipakai
+- define `store_slug`
+- define `store name`
+- prepare `VITE_SCALEV_STORE_UNIQUE_ID`
+- prepare `VITE_SCALEV_STOREFRONT_API_KEY`
+- choose the new GitHub owner/repository
+- choose the Cloudflare account to use
 
-Gunakan naming convention dari [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Documents/Github/storefront/docs/NAMING_CONVENTIONS.md).
+Use the naming rules from [docs/NAMING_CONVENTIONS.md](/Users/armyalghifari/Documents/Github/storefront/docs/NAMING_CONVENTIONS.md).
 
-## 2. Duplikasi Repo
+## 2. Duplicate the Repository
 
-- buat repo baru dari starter ini
-- arahkan `origin` ke repo baru
-- pastikan branch production tetap `main`
+- create a new repository from this starter
+- point `origin` to the new repository
+- keep the production branch as `main`
 
-## 3. Bootstrap Konfigurasi Store
+## 3. Bootstrap the Store Configuration
 
-Jalankan:
+Run:
 
 ```bash
 npm install
 npm run bootstrap:store -- --store-slug <store-slug> --kv-id <kv-namespace-id>
 ```
 
-Lalu:
+Then:
 
-- copy `.env.example` ke `.env`
-- isi:
+- copy `.env.example` to `.env`
+- fill in:
   - `VITE_SCALEV_STORE_UNIQUE_ID`
   - `VITE_SCALEV_STOREFRONT_API_KEY`
 
-## 4. Buat Resource Cloudflare
+## 4. Create Cloudflare Resources
 
-Wajib:
+Required:
 
-- 1 Pages project baru
-- 1 KV namespace baru
+- 1 new Pages project
+- 1 new KV namespace
 
-Setting Pages:
+Pages settings:
 
 - production branch: `main`
 - build command: `npm run build`
-- output dir: `dist`
+- output directory: `dist`
 
-Bindings/secrets:
+Bindings / secrets:
 
 - KV binding: `STOREFRONT_SETTINGS`
 - env: `VITE_SCALEV_STORE_UNIQUE_ID`
@@ -56,56 +56,56 @@ Bindings/secrets:
 - secret: `ADMIN_PASSWORD`
 - secret: `ADMIN_SESSION_SECRET`
 
-## 5. Pastikan Tidak Ada Proxy Storefront API v3
+## 5. Confirm There Is No Storefront API v3 Proxy
 
-Verifikasi:
+Verify:
 
-- storefront tidak memakai `/scalev-api`
-- Storefront API v3 dipanggil langsung dari browser
-- tidak ada backend baru yang memproxy endpoint v3
+- the storefront does not use `/scalev-api`
+- Storefront API v3 is called directly from the browser
+- no backend layer proxies v3 endpoints
 
-Lihat [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md).
+See [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md).
 
-## 6. Push ke GitHub
+## 6. Push to GitHub
 
-- commit perubahan setup yang memang relevan
-- push ke `main`
-- tunggu deployment Cloudflare selesai
+- commit the relevant setup changes
+- push to `main`
+- wait for the Cloudflare deployment to finish
 
-## 7. Verifikasi Live
+## 7. Verify The Live Store
 
-- homepage `/` load normal
-- katalog muncul
-- `/admin` bisa login
-- hidden item bisa diubah
-- `/storefront-api/settings` balas `200`
-- add to cart berhasil
-- checkout berhasil
-- order berhasil dibuat
-- IP order terbaca sebagai IP client, bukan IP proxy
+- homepage `/` loads correctly
+- catalog appears
+- `/admin` can log in
+- hidden item toggles work
+- `/storefront-api/settings` returns `200`
+- add to cart works
+- checkout works
+- order creation works
+- the recorded order IP is the client IP, not a shared proxy IP
 
-## 8. Isi Merchandising Awal di `/admin`
+## 8. Fill Initial Merchandising In `/admin`
 
-- nama toko
+- store name
 - hero title
 - hero subtitle
 - catalog title
 - button color
 - price text color
-- payment methods yang diizinkan tampil
+- allowed payment methods
 - WhatsApp confirmation number
 - item visibility
 - Meta Pixel settings
 
-## 9. Simpan Bukti Launch
+## 9. Save Launch Evidence
 
-Setelah live, simpan minimal:
+After launch, save at least:
 
-- URL production
+- production URL
 - Cloudflare project name
 - KV namespace name
-- repo GitHub
+- GitHub repository
 - store slug
-- tanggal launch
+- launch date
 
-Ini akan memudahkan kalau store serupa harus diduplikasi lagi.
+This makes future duplication or auditing much easier.

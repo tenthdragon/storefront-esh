@@ -1,182 +1,182 @@
 # Conversion Event Guide
 
-Dokumen ini menjelaskan best practice implementasi conversion event untuk storefront headless yang memakai Scalev Storefront API v3 dan Meta Pixel.
+This document defines the conversion event best practices for this headless storefront pattern when using Scalev Storefront API v3 and Meta Pixel.
 
-Tujuannya adalah mencegah LLM lain atau developer lain mengarang arsitektur tracking yang tidak sesuai dengan pola repo ini.
+Its purpose is to prevent another LLM or developer from inventing a tracking architecture that conflicts with the intended design of this repository.
 
 ## Hard Rules
 
-### 1. Jangan proxy endpoint conversion Storefront API v3
+### 1. Do not proxy Storefront API v3 conversion endpoints
 
-Endpoint analytics / conversion dari Scalev Storefront API v3 harus dipanggil langsung dari browser, sama seperti endpoint v3 lainnya.
+Analytics / conversion endpoints from Scalev Storefront API v3 must be called directly from the browser, just like the other v3 endpoints.
 
-Jangan kirim endpoint conversion melalui:
+Do not send conversion endpoints through:
 
-- backend sendiri
-- reverse proxy
+- your own backend
+- a reverse proxy
 - middleware
-- edge function
-- Cloudflare Worker / Pages Function
-- serverless pass-through API
+- an edge function
+- a Cloudflare Worker / Pages Function
+- a serverless pass-through API
 
-Alasan:
+Reasons:
 
-- Storefront API v3 didesain untuk direct browser usage
-- rate limiter bersifat strict
-- proxy dapat membuat banyak user terlihat berasal dari IP yang sama
-- heuristik spam, duplicate protection, dan attribution bisa terganggu
+- Storefront API v3 is designed for direct browser usage
+- rate limiting is intentionally strict
+- proxying can make many users appear to come from the same IP
+- spam detection, duplicate protection, and attribution can be distorted
 
-## Mental Model yang Dipakai Repo Ini
+## Tracking Model Used In This Repo
 
-Tracking dibagi menjadi dua lapis:
+Tracking is split into two layers:
 
 1. **Base pixel bootstrap**
 2. **Runtime event firing**
 
 ### Base pixel bootstrap
 
-Base pixel harus tersedia sangat awal di HTML awal storefront.
+The base pixel must be available very early in the initial storefront HTML.
 
-Di repo ini, base snippet diinject lewat:
+In this repo, the base snippet is injected by:
 
 - [functions/[[path]].ts](/Users/armyalghifari/Documents/Github/storefront/functions/[[path]].ts)
 
-Yang dilakukan:
+What it does:
 
-- inject public storefront settings ke HTML
-- inject base Meta Pixel snippet bila Meta aktif
-- fire `PageView` base dari snippet awal
+- inject public storefront settings into the HTML
+- inject the base Meta Pixel snippet when Meta tracking is enabled
+- fire the base `PageView` from the initial snippet
 
-Ini penting karena event helper seperti Meta Pixel Helper sering gagal mendeteksi pixel jika bootstrap datang terlalu terlambat atau hanya setelah fetch async frontend selesai.
+This matters because helpers such as Meta Pixel Helper often fail to detect the pixel when bootstrap happens too late or only after an async frontend fetch completes.
 
 ### Runtime event firing
 
-Event setelah page load ditangani dari aplikasi frontend.
+Post-load events are handled by the frontend application.
 
-File utama:
+Main file:
 
 - [src/stores/analytics.ts](/Users/armyalghifari/Documents/Github/storefront/src/stores/analytics.ts)
 
-Frontend bertanggung jawab untuk:
+The frontend is responsible for:
 
 - `ViewContent`
 - `AddToCart`
 - `InitiateCheckout`
 - `Purchase`
 
-## Event Sequence yang Harus Diikuti
+## Required Event Sequence
 
 ### 1. `PageView`
 
-`PageView` adalah baseline event pertama.
+`PageView` is the baseline event.
 
-Prinsip:
+Rules:
 
-- base snippet harus siap lebih dulu
-- storefront page pertama harus memicu `PageView`
-- route change berikutnya juga harus dapat memicu page view runtime bila diperlukan
+- the base snippet must be ready first
+- the first storefront page must produce `PageView`
+- later route changes may also need runtime page-view handling
 
 ### 2. `ViewContent`
 
-Trigger saat halaman detail produk atau bundle berhasil dimuat dan item yang aktif sudah jelas.
+Fire this when a product detail or bundle detail page has loaded successfully and the active item is known.
 
-Di repo ini:
+In this repo:
 
 - product detail → `trackMetaViewContentForProduct(...)`
 - bundle detail → `trackMetaViewContentForBundle(...)`
 
 ### 3. `AddToCart`
 
-Trigger saat user benar-benar menambah item ke keranjang.
+Fire this when the user truly adds an item to the cart.
 
-Prinsip:
+Rules:
 
-- event browser boleh ditembak secepat mungkin dari konteks produk aktif
-- relay ke Scalev tetap harus menjaga kesesuaian dengan item yang benar
-- jangan bergantung pada lookup cart yang rapuh jika konteks item aktif sudah tersedia di halaman
+- the browser event may fire immediately from the active product context
+- the Scalev relay must still correspond to the correct item payload
+- do not depend on fragile cart lookups if the active item context is already available in the page
 
 ### 4. `InitiateCheckout`
 
-Trigger saat user benar-benar memasuki fase checkout dengan cart yang ada.
+Fire this when the user truly enters checkout with a real cart context.
 
-Di repo ini, event ini ditembak dari konteks cart saat checkout dimulai.
+In this repo, the event is fired from the cart context when checkout begins.
 
 ### 5. `Purchase`
 
-`Purchase` harus mengikuti trigger yang dipilih di settings:
+`Purchase` must follow the configured trigger:
 
 - `checkout_success`
 - `order_paid`
 
-Jangan menembak keduanya sekaligus.
+Do not fire both for the same purchase flow.
 
 ## Dedupe Rule
 
-Browser event dan server relay untuk event yang sama harus memakai `event_id` yang sama.
+The browser event and the server relay for the same action must use the same `event_id`.
 
-Ini penting terutama untuk:
+This is especially important for:
 
 - `AddToCart`
 - `InitiateCheckout`
 - `Purchase`
 
-Di repo ini, event ID dikelola di store analytics agar:
+In this repo, event IDs are managed in the analytics store so that:
 
-- browser event tetap terbaca oleh helper/tools
-- server relay ke Scalev tetap bisa dilakukan
-- Meta bisa melakukan dedupe dengan benar
+- browser events remain visible to helper tools
+- the Scalev relay can still be sent
+- Meta can deduplicate correctly
 
 ## Browser vs Server Responsibilities
 
 ### Browser
 
-Browser harus menangani:
+The browser must handle:
 
 - base snippet availability
 - firing Meta browser events
-- menyimpan attribution yang relevan
-- mengirim relay event ke endpoint Scalev v3 secara direct
+- storing relevant attribution data
+- sending relay events directly to Scalev v3 endpoints
 
 ### Server / Cloudflare
 
-Cloudflare layer di repo ini **tidak** dipakai untuk memproxy event conversion Scalev v3.
+The Cloudflare layer in this repo is **not** used to proxy Scalev v3 conversion endpoints.
 
-Cloudflare hanya dipakai untuk:
+Cloudflare is only used for:
 
 - admin auth/settings
 - public storefront settings
 - base HTML injection
 
-## Apa yang Tidak Boleh Dilakukan
+## What Another LLM Must Not Do
 
-LLM lain tidak boleh:
+Another LLM must not:
 
-- memindahkan endpoint analytics v3 ke proxy internal
-- memindahkan checkout ke proxy internal
-- membuat event firing baru tanpa event lifecycle yang jelas
-- menembak `Purchase` di banyak titik sekaligus
-- mengubah base pixel bootstrap menjadi fetch async yang terlambat tanpa alasan kuat
-- menyimpulkan “pixel tidak terbaca” sebelum memeriksa timing bootstrap dan environment helper
+- move Scalev v3 analytics endpoints into an internal proxy
+- move checkout into an internal proxy
+- invent new event firing points without a clear lifecycle reason
+- fire `Purchase` from multiple places at once
+- change the base pixel bootstrap into a late async-only fetch pattern without a strong reason
+- conclude that “the pixel is broken” before checking bootstrap timing and helper environment behavior
 
 ## Verification Checklist
 
-Saat mengubah tracking, cek minimal:
+When changing tracking, verify at least:
 
-1. pixel terdeteksi di halaman storefront
-2. `PageView` muncul
-3. `ViewContent` muncul di detail produk
-4. `AddToCart` muncul saat item ditambahkan
-5. `InitiateCheckout` muncul saat checkout dimulai
-6. `Purchase` hanya muncul pada trigger yang dipilih
-7. endpoint analytics v3 tetap dipanggil direct dari browser
-8. tidak ada proxy internal baru untuk endpoint v3
+1. the pixel is detected on the storefront page
+2. `PageView` appears
+3. `ViewContent` appears on product detail
+4. `AddToCart` appears when an item is added
+5. `InitiateCheckout` appears when checkout begins
+6. `Purchase` appears only on the configured trigger
+7. analytics v3 endpoints are still called directly from the browser
+8. no internal proxy has been added for Storefront API v3 endpoints
 
-## Rule Khusus untuk Repo Ini
+## Repo-Specific Rule
 
-Jika store berikutnya diduplikasi dari repo ini, pertahankan aturan berikut:
+If another store is duplicated from this repo, keep these rules intact:
 
-- Storefront API v3 tetap direct dari browser
-- conversion endpoints tetap direct dari browser
-- base snippet tetap diinject dari HTML awal
-- runtime event logic tetap dipusatkan di [src/stores/analytics.ts](/Users/armyalghifari/Documents/Github/storefront/src/stores/analytics.ts)
-- `/admin` hanya mengatur settings, bukan menjadi relay untuk endpoint conversion v3
+- Storefront API v3 remains browser-direct
+- conversion endpoints remain browser-direct
+- the base snippet remains injected into the initial HTML
+- runtime event logic remains centralized in [src/stores/analytics.ts](/Users/armyalghifari/Documents/Github/storefront/src/stores/analytics.ts)
+- `/admin` only manages settings and must not become a relay for Scalev v3 conversion endpoints

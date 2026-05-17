@@ -1,85 +1,85 @@
 # Implementation Blueprint
 
-Dokumen ini menjelaskan pola implementasi final repo ini agar storefront yang sama bisa diduplikasi ke store Scalev lain tanpa mengulang keputusan arsitektur dari nol.
+This document explains the final implementation pattern used in this repository so the same storefront architecture can be duplicated for other Scalev stores without rediscovering the core decisions from scratch.
 
-## Prinsip Arsitektur
+## Architectural Principles
 
-Repo ini mengikuti model:
+This repository follows the model:
 
-1. `1 store Scalev`
+1. `1 Scalev store`
 2. `1 repository`
 3. `1 Cloudflare Pages project`
-4. `1 KV namespace untuk settings`
+4. `1 KV namespace for settings`
 5. `1 admin panel` per store
 
-Tujuannya:
+Goals:
 
-- tiap store terisolasi
-- branding dan visibility bisa diatur per store
-- deploy tetap sederhana
-- LLM lain bisa meluncurkan store baru dengan pola yang sama
+- each store stays isolated
+- branding and visibility can be managed per store
+- deployment remains simple
+- another LLM can launch a new store with the same pattern
 
-## Rule Inti
+## Core Rules
 
-### 1. Storefront API v3 harus direct dari browser
+### 1. Storefront API v3 must be called directly from the browser
 
-Semua endpoint Storefront API v3 dipanggil langsung dari browser ke `https://api.scalev.com`.
+All Storefront API v3 endpoints are called directly from the browser to `https://api.scalev.com`.
 
-Contohnya:
+Examples:
 
-- katalog
-- detail produk
-- keranjang
+- catalog
+- product detail
+- cart
 - checkout
 - payment methods
 - order detail
 - analytics / conversion events
 
-Alasan:
+Reasons:
 
-- rate limiter Scalev v3 memang didesain untuk direct browser usage
-- jika diproxy, banyak user akan terlihat berasal dari IP yang sama
-- hal itu bisa merusak:
+- Scalev v3 rate limiting is designed for direct browser usage
+- if requests are proxied, many users may appear to come from the same IP
+- that can break:
   - rate limiting
   - duplicate order protection
   - spam detection
-  - heuristik provider pembayaran
+  - payment provider heuristics
 
-Dokumen khususnya ada di [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md).
-Untuk tracking dan pixel, baca juga [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md).
+See [docs/STOREFRONT_API_V3_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/STOREFRONT_API_V3_GUIDE.md) for the dedicated rule set.
+For tracking and pixel behavior, also read [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md).
 
-### 2. Backend internal hanya untuk kebutuhan non-Scalev
+### 2. Internal backend logic is only for non-Scalev concerns
 
-Cloudflare Pages Functions di repo ini dipakai hanya untuk:
+Cloudflare Pages Functions in this repo are used only for:
 
 - `/admin-api`
-  - login admin
-  - session admin
-  - update settings storefront
+  - admin login
+  - admin session
+  - storefront settings updates
 - `/storefront-api/settings`
-  - expose public settings milik storefront ini
-- HTML injection di [functions/[[path]].ts](/Users/armyalghifari/Documents/Github/storefront/functions/[[path]].ts)
-  - inject public settings ke HTML awal
-  - inject base Meta Pixel snippet bila aktif
+  - public storefront settings owned by this project
+- HTML injection in [functions/[[path]].ts](/Users/armyalghifari/Documents/Github/storefront/functions/[[path]].ts)
+  - inject public settings into initial HTML
+  - inject the base Meta Pixel snippet when enabled
 
-Cloudflare Functions **bukan** dipakai sebagai proxy Storefront API v3.
+Cloudflare Functions are **not** used as a proxy for Storefront API v3.
 
-## Peta Responsibility
+## Responsibility Map
 
 ### Browser / Frontend
 
-Frontend bertanggung jawab untuk:
+The frontend is responsible for:
 
-- fetch katalog dan product detail dari Scalev
-- kelola guest token Scalev di browser
-- kelola cart
-- membuat order checkout
-- render payment selection
-- redirect ke payment page Scalev untuk metode redirect
+- fetching catalog and product detail from Scalev
+- managing the Scalev guest token in the browser
+- managing cart state through Scalev
+- creating checkout orders
+- rendering payment selection
+- redirecting to the Scalev payment page for redirect-based payment methods
 - firing Meta browser events
-- filter hidden item berdasarkan public settings
+- filtering hidden items using public storefront settings
 
-File penting:
+Important files:
 
 - [src/api/client.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/client.ts)
 - [src/api/catalog.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/catalog.ts)
@@ -89,50 +89,50 @@ File penting:
 
 ### Cloudflare KV
 
-KV menjadi source of truth untuk settings storefront milik store ini:
+KV is the source of truth for project-owned storefront settings:
 
-- visibility item
+- item visibility
 - branding
 - hero title/subtitle
 - catalog section settings
-- warna button / harga
-- payment methods yang diizinkan tampil
-- WhatsApp confirmation config
-- Meta Ads config
+- button and price colors
+- allowed payment methods
+- WhatsApp confirmation configuration
+- Meta Ads configuration
 
-File penting:
+Important files:
 
 - [functions/_lib/settings.ts](/Users/armyalghifari/Documents/Github/storefront/functions/_lib/settings.ts)
 - [functions/_lib/types.ts](/Users/armyalghifari/Documents/Github/storefront/functions/_lib/types.ts)
 
 ### Admin Panel
 
-`/admin` dipakai untuk mengatur:
+`/admin` manages:
 
-- item visible/hidden
-- nama toko
+- visible/hidden items
+- store name
 - hero copy
-- warna UI
-- payment methods yang mau dipakai
+- UI colors
+- allowed payment methods
 - WhatsApp destination
-- Meta Pixel config
+- Meta Pixel settings
 
-File penting:
+Important files:
 
 - [src/views/AdminView.vue](/Users/armyalghifari/Documents/Github/storefront/src/views/AdminView.vue)
 - [src/api/admin.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/admin.ts)
 - [functions/admin-api/settings.ts](/Users/armyalghifari/Documents/Github/storefront/functions/admin-api/settings.ts)
 
-## Data Flow Penting
+## Important Data Flows
 
 ### Home / Catalog
 
-1. Browser fetch Scalev public items.
-2. Browser fetch `/storefront-api/settings`.
-3. Hidden item keys dari settings dipakai untuk memfilter katalog di browser.
-4. UI merender hanya item yang visible.
+1. The browser fetches public items from Scalev.
+2. The browser fetches `/storefront-api/settings`.
+3. Hidden item keys from settings are used to filter the catalog in the browser.
+4. The UI renders only visible items.
 
-File terkait:
+Related files:
 
 - [src/api/catalog.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/catalog.ts)
 - [src/stores/storefrontSettings.ts](/Users/armyalghifari/Documents/Github/storefront/src/stores/storefrontSettings.ts)
@@ -140,28 +140,28 @@ File terkait:
 
 ### Product Detail
 
-1. Browser fetch detail produk/bundle dari Scalev.
-2. Browser cek apakah item disembunyikan menurut public settings.
-3. Jika hidden, FE melempar error agar item tidak tampil di storefront publik.
+1. The browser fetches product or bundle detail from Scalev.
+2. The browser checks whether the item is hidden according to public settings.
+3. If hidden, the frontend throws an error so the item does not render publicly.
 
 ### Cart
 
-1. Browser memanggil cart endpoint v3 langsung ke Scalev.
-2. `x-scalev-guest-token` disimpan di localStorage.
-3. Guest token itu dipakai ulang untuk cart dan checkout berikutnya.
+1. The browser calls Scalev v3 cart endpoints directly.
+2. `x-scalev-guest-token` is stored in localStorage.
+3. That guest token is reused for cart and checkout requests.
 
 ### Checkout
 
-1. Browser isi data customer / shipping.
-2. Browser fetch shipping summary langsung ke Scalev bila perlu.
-3. Browser create order langsung ke Scalev.
-4. Setelah sukses:
-   - purchase tracking dijalankan
-   - guest token/cart direset
-   - kalau metode bayar butuh redirect, browser diarahkan ke `payment_url`
-   - kalau transfer manual, user masuk ke halaman order internal
+1. The browser collects customer or shipping data.
+2. The browser fetches shipping summary directly from Scalev when needed.
+3. The browser creates the order directly in Scalev.
+4. After success:
+   - purchase tracking runs
+   - guest token/cart state is reset
+   - if the payment method requires redirect, the browser is sent to `payment_url`
+   - for manual transfer, the user stays on the internal order page
 
-File penting:
+Important files:
 
 - [src/views/CheckoutView.vue](/Users/armyalghifari/Documents/Github/storefront/src/views/CheckoutView.vue)
 - [src/api/checkout.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/checkout.ts)
@@ -169,69 +169,69 @@ File penting:
 
 ### Order Page
 
-1. Browser fetch public order detail dari Scalev.
-2. FE menormalisasi customer name/email/phone dari shape payload Scalev.
-3. Instruksi pembayaran ditampilkan sesuai metode bayar:
-   - `bank_transfer`: tampilkan rekening
-   - metode redirect: tampilkan CTA ke halaman pembayaran resmi Scalev bila diperlukan
+1. The browser fetches public order detail from Scalev.
+2. The frontend normalizes customer name/email/phone from the actual Scalev payload shape.
+3. Payment instructions are rendered according to payment method:
+   - `bank_transfer`: show bank accounts
+   - redirect methods: show or use the official Scalev payment page
 
-File penting:
+Important files:
 
 - [src/views/OrderView.vue](/Users/armyalghifari/Documents/Github/storefront/src/views/OrderView.vue)
 - [src/components/PaymentInstructions.vue](/Users/armyalghifari/Documents/Github/storefront/src/components/PaymentInstructions.vue)
 - [src/utils/order.ts](/Users/armyalghifari/Documents/Github/storefront/src/utils/order.ts)
 
-## Fitur yang Sudah Distandardisasi
+## Standardized Features
 
-### Visibility Produk
+### Item Visibility
 
-- Visibility tidak lagi dipaksa di layer proxy
-- Visibility disimpan di KV
-- Public settings mengirim `hiddenItemKeys`
-- Frontend yang memfilter item
+- visibility is no longer enforced by a v3 proxy layer
+- visibility is stored in KV
+- public settings expose `hiddenItemKeys`
+- the frontend filters items
 
-Keuntungan:
+Benefits:
 
-- tetap konsisten dengan aturan “jangan proxy Storefront API v3”
-- tetap memungkinkan merchandising per store
+- remains consistent with the “do not proxy Storefront API v3” rule
+- still supports per-store merchandising
 
 ### Payment Methods
 
-- daftar metode bayar aktif dibaca dari Scalev
-- `/admin` dapat membatasi metode mana yang ingin tampil
-- checkout FE menampilkan irisan dari:
-  - aktif di Scalev
-  - diizinkan di settings storefront
+- active payment methods are read from Scalev
+- `/admin` can further restrict which methods should appear in the storefront
+- checkout shows the intersection of:
+  - methods active in Scalev
+  - methods allowed in storefront settings
 
-### Redirect Payment
+### Redirect Payment Flow
 
-- metode redirect seperti `invoice` atau `qris` diarahkan ke payment page resmi Scalev setelah order berhasil dibuat
-- transfer bank tetap memakai order page internal untuk menampilkan rekening
+- redirect-based methods such as `invoice` or `qris` go to the official Scalev payment page after order creation
+- bank transfer stays on the internal order page so bank instructions can be shown
 
 ### Meta Pixel
 
-- base snippet diinject di HTML awal
-- settings pixel dibaca dari public storefront settings
-- event lanjutan ditrigger dari runtime app
+- the base snippet is injected into the initial HTML
+- pixel settings come from public storefront settings
+- follow-up events are triggered by runtime app logic
 
-Dokumen detailnya ada di [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md).
+See [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/Documents/Github/storefront/docs/CONVERSION_EVENT_GUIDE.md) for the detailed tracking rules.
 
-## Hal yang Harus Tetap Dipertahankan Saat Duplikasi
+## What Must Be Preserved When Duplicating This Pattern
 
-- jangan buat proxy baru untuk Storefront API v3
-- jangan campurkan beberapa store ke satu KV namespace
-- jangan gunakan satu Pages project untuk beberapa store berbeda
-- jangan commit secret production ke repo
-- jangan deploy manual dari lokal
+- do not introduce a new proxy for Storefront API v3
+- do not share one KV namespace across unrelated stores
+- do not use one Pages project for multiple unrelated stores
+- do not commit production secrets to Git
+- do not deploy production manually from local
 
-## File yang Biasanya Disentuh Saat Clone Store Baru
+## Files Usually Touched For A New Store
 
 - [wrangler.jsonc](/Users/armyalghifari/Documents/Github/storefront/wrangler.jsonc)
-- Cloudflare env vars dan secrets
+- Cloudflare env vars and secrets
 - KV namespace binding
-- `/admin` settings setelah site live
+- `/admin` settings after the site is live
 
-## File yang Biasanya Tidak Perlu Diubah
+## Files Usually Not Changed For A New Store
 
 - [src/api/client.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/client.ts)
 - [src/api/catalog.ts](/Users/armyalghifari/Documents/Github/storefront/src/api/catalog.ts)
@@ -240,4 +240,4 @@ Dokumen detailnya ada di [docs/CONVERSION_EVENT_GUIDE.md](/Users/armyalghifari/D
 - [functions/admin-api](/Users/armyalghifari/Documents/Github/storefront/functions/admin-api)
 - [functions/storefront-api/settings.ts](/Users/armyalghifari/Documents/Github/storefront/functions/storefront-api/settings.ts)
 
-Artinya, untuk store berikutnya idealnya yang berubah adalah konfigurasi dan konten, bukan arsitektur dasar.
+In other words, for the next store the ideal changes are configuration and content, not the core architecture.
